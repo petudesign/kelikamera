@@ -4,6 +4,7 @@ Tavoite: arvioida tien pinnan tila ja kitka Fintraffic-kelikameroiden kuvista. O
 automaattisesti, kun jokainen kuva yhdistetään lähimmän tiesääaseman anturimittaukseen samalta hetkeltä.
 
 Vaihe nyt: **datan keruu talvelta 2026–27.** Päätökset ja niiden perustelut: [DECISIONS.md](DECISIONS.md).
+Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md).
 
 ## Rakenne
 
@@ -13,6 +14,7 @@ collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä s�
 collector/count.py     luokkalaskuri: montako esimerkkiä kustakin kelistä on kertynyt
 collector/build_site.py karttasivun data → site/data/latest.json
 site/                  karttasivu (staattinen, MapLibre)
+tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
 .github/workflows/     ajastus GitHub Actionsissa (3 h välein)
 ```

@@ -173,6 +173,24 @@ kameroita, joihin tekoäly tuo arvion. Ensimmäisessä ajossa 323 mitattua ja 47
   `site/data/finland.geojson`, 19 kt). Aineisto on karkea lähellä katsottuna, joten himmennys häivytetään pois
   zoomattaessa sisään (zoom 9). Tarkempi 1:10m-aineisto olisi ~25 Mt, eikä se ole tarpeen tässä mittakaavassa.
 
+## 2026-11-09 · Edistymisen dokumentointi
+
+**Päätös:** `PROGRESS.md` + kuvat kansiossa `docs/progress/<pvm>/`. Samat mittarit joka kerta
+(kamerat, mitattu, tekoälyn arvio, ei tietoa, mallin tarkkuus), ja kuvat otetaan aina samalla skriptillä
+(`tools/screenshot.py`: Chrome ilman ikkunaa, odottaa kartan latautumisen, 1600×1000 @2x ja 390×844 @3x).
+
+**Miksi:** Lopussa halutaan konkreettinen "ennen ja jälkeen" -näyttö portfolioon. Se on uskottava vain, jos
+mittarit on määritelty etukäteen eikä valittu jälkikäteen parhaan näköisiksi.
+
+**Sääntö väitteille:** kattavuus esitetään aina yhdessä tarkkuuden kanssa. Pelkkä "kattavuus 40 % → 100 %"
+olisi harhaanjohtava, koska sen saisi myös arvaamalla.
+
+**Lähtötaso:** 797 kameraa, 323 mitattua (40,5 %), 474 ilman tietoa (59,5 %).
+
+**Tekninen huomio:** Chromen oma `--screenshot` otti kuvan ennen kuin kartta ehti latautua (musta kartta).
+Siksi työkalu ohjaa Chromea DevTools-protokollalla ja odottaa, kunnes `map.areTilesLoaded()` on tosi.
+Lisäriippuvuus `websocket-client` on vain `requirements-dev.txt`:ssä, joten keräin ei tarvitse sitä.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
