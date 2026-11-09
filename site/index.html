@@ -108,8 +108,24 @@ const fmtTime=s=>new Date(s).toLocaleString("fi-FI",{day:"numeric",month:"numeri
 const num=(v,u,d=1)=>v==null?"–":`${v.toLocaleString("fi-FI",{minimumFractionDigits:d,maximumFractionDigits:d})}${u}`;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+// Kartta rajataan Suomeen näytön muodon mukaan: koko Suomi mahtuu aina näkyviin,
+// mutta kauemmas ei voi loitontaa eikä karttaa voi vetää naapurimaihin.
+const FINLAND=[[19.0,59.6],[31.7,70.1]];
+function fitPadding(){
+  const mobile=innerWidth<=720, top=document.querySelector(".top");
+  return mobile?{top:top.offsetHeight+24,bottom:16,left:12,right:12}:{top:24,bottom:32,left:24,right:24};
+}
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/dark",
-  center:[25.5,64.6],zoom:4.6,minZoom:3.5,maxZoom:14,attributionControl:false});
+  bounds:FINLAND,fitBoundsOptions:{padding:fitPadding()},maxZoom:14,attributionControl:false});
+function lockToFinland(){
+  map.setMaxBounds(null); map.setMinZoom(0);
+  map.fitBounds(FINLAND,{padding:fitPadding(),animate:false});
+  const b=map.getBounds(), dx=(b.getEast()-b.getWest())*.15, dy=(b.getNorth()-b.getSouth())*.1;
+  map.setMinZoom(map.getZoom()-.2);
+  map.setMaxBounds([[b.getWest()-dx,b.getSouth()-dy],[b.getEast()+dx,b.getNorth()+dy]]);
+}
+map.once("load",lockToFinland);
+let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(lockToFinland,150)});
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
 
 fetch("data/latest.json").then(r=>r.json()).then(d=>{
