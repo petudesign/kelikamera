@@ -166,6 +166,13 @@ kameroita, joihin tekoäly tuo arvion. Ensimmäisessä ajossa 323 mitattua ja 47
 
 **Jätettiin myöhemmäksi:** aikajana, tekoälyarviot, GitHub Pages -julkaisu, "Arvaa keli" -peli.
 
+**Lisäys samana päivänä, kartan rajaus:**
+- Kartta lukitaan Suomeen **näytön muodon mukaan**: Suomi sovitetaan näkymään, ja siitä lasketaan loitonnuksen ja
+  vetämisen raja. Kiinteä raja-alue ei toiminut, koska leveällä näytöllä Suomen päät jäivät reunojen yli.
+- **Suomen ulkopuoli himmennetään** maskilla. Rajat ovat Natural Earthin 1:50m-aineistosta (public domain,
+  `site/data/finland.geojson`, 19 kt). Aineisto on karkea lähellä katsottuna, joten himmennys häivytetään pois
+  zoomattaessa sisään (zoom 9). Tarkempi 1:10m-aineisto olisi ~25 Mt, eikä se ole tarpeen tässä mittakaavassa.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.

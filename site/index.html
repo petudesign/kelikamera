@@ -94,7 +94,7 @@ dd{font-size:15px;margin-top:1px}
 
 <aside class="panel" id="panel" aria-live="polite"></aside>
 
-<div class="foot">Data: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, CC BY 4.0 · Kartta: © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap</div>
+<div class="foot">Data: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, CC BY 4.0 · Kartta: © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Rajat: Natural Earth</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
@@ -151,6 +151,13 @@ function geojson(){
 }
 
 function addLayer(){
+  // Suomen ulkopuoli himmennetään (Natural Earth 1:50m, public domain). Lähellä raja on karkea,
+  // joten himmennys häivytetään pois, kun zoomataan sisään.
+  map.addSource("fin",{type:"geojson",data:"data/finland.geojson"});
+  map.addLayer({id:"outside",type:"fill",source:"fin",filter:["==",["get","role"],"mask"],
+    paint:{"fill-color":"#0e1116","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
+  map.addLayer({id:"border",type:"line",source:"fin",filter:["==",["get","role"],"border"],
+    paint:{"line-color":"#9fb0c4","line-opacity":["interpolate",["linear"],["zoom"],5,.35,9,0],"line-width":1}});
   map.addSource("cams",{type:"geojson",data:geojson()});
   map.addLayer({id:"cams-halo",type:"circle",source:"cams",filter:["==",["get","k"],"jää/kuura"],
     paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,9,10,18],"circle-color":COLORS["jää/kuura"],"circle-opacity":.25,"circle-blur":.6}});
