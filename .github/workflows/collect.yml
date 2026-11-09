@@ -6,7 +6,9 @@ on:
   workflow_dispatch:          # käsin käynnistys Actions-välilehdeltä
 
 permissions:
-  contents: write             # vain heartbeat-committia varten
+  contents: write             # heartbeat-commit
+  pages: write                # sivun julkaisu
+  id-token: write             # Pages-julkaisun tunnistautuminen
 
 concurrency:
   group: keruu
@@ -15,7 +17,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +41,19 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_REPO: ${{ vars.HF_REPO }}
 
+      # Sivun data juuri kerätystä ajosta + Digitrafficin 24 h historia + Ilmatieteen laitoksen varoitukset.
+      # Jos tämä epäonnistuu, keruu on jo tallessa; sivu jää edelliseen versioon.
+      - name: Rakenna karttasivun data
+        id: site
+        continue-on-error: true
+        run: python collector/build_site.py
+
+      - name: Valmistele Pages-julkaisu
+        if: steps.site.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
       # Julkisessa repossa GitHub poistaa ajastuksen käytöstä, jos repossa ei ole
       # tapahtunut mitään 60 päivään. Viikoittainen pieni commit pitää sen elossa.
       - name: Heartbeat (maanantain klo 00 UTC ajo)
@@ -53,3 +68,17 @@ jobs:
             git commit -m "Heartbeat $(date -u +%F)"
             git push
           fi
+    outputs:
+      site: ${{ steps.site.outcome }}
+
+  deploy:
+    needs: collect
+    if: needs.collect.outputs.site == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Julkaise GitHub Pagesiin
+        id: deployment
+        uses: actions/deploy-pages@v4
