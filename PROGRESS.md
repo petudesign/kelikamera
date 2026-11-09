@@ -41,3 +41,13 @@ Ajo 2026-11-09 klo 16:02 UTC.
 
 <img src="docs/progress/2026-11-09/ui-v2-mobiili-ei-mittausta.png" width="300" alt="UI v2, mobiili, kamera ilman mittausta">
 
+
+**Saman päivän ominaisuuskierros (v3):** aikajana, Liukastumassa-lista, tiekohtainen näkymä, viralliset
+liikennesäävaroitukset ja englanti. Luvut eivät muuttuneet (malli ei vielä käytössä).
+
+![Liukastumassa](docs/progress/2026-11-09/ui-v3-liukastumassa.png)
+![Tie 6](docs/progress/2026-11-09/ui-v3-tie-6.png)
+![Englanti ja aikajana klo 9](docs/progress/2026-11-09/ui-v3-en-aikajana.png)
+![Liikennesäävaroitus](docs/progress/2026-11-09/ui-v3-varoitus.png)
+
+<img src="docs/progress/2026-11-09/ui-v3-mobiili-liukastumassa.png" width="300" alt="Mobiili, Liukastumassa">

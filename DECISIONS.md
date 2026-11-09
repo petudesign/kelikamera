@@ -239,6 +239,197 @@ otetaan käyttöön, kun tasot ovat valmiina.
 **Työkalu:** `tools/screenshot.py` ottaa nyt valinnaisen JS-komennon (esim. paneelin avaus) ja raportoi sivun
 JS-virheet, joten rikkinäinen sivu ei mene kuvana läpi huomaamatta.
 
+## 2026-11-09 · Ennusteiden arkistointi ja siirto Digitrafficin v2-rajapintaan
+
+**Löydös:** Digitrafficin openapi-kuvauksen mukaan käyttämämme `weather/v1`-rajapinnat on merkitty
+vanhentuneiksi ja **poistuvat 2027-04-13**, eli kesken tämän talven keruun. Tieosuusennusteiden v1 oli
+merkitty poistuvaksi jo 2026-11-03. Kelikamerarajapinta (`weathercam/v1`) ei ole vanhentunut.
+
+**Päätös:** Keräin käyttää sääasemille v2:ta (`/api/weather/v2/stations/data`, `/stations`, `/sensors`,
+`/forecast-sections/forecasts`). Rakenne on sama, joten tunnisteiden tulkinta ei muuttunut.
+
+**Ennusteet jokaiseen keruuajoon**, samaan tar-tiedostoon kuvien kanssa:
+- `forecast_road.json.gz`: Digitrafficin tiesääennuste kaikille 9 302 tieosuudelle (0, 2, 4, 6, 12 h) sellaisenaan.
+- `forecast_fmi.json.gz`: Ilmatieteen laitoksen **muokattu ennuste** (`fmi::forecast::edited::weather::scandinavia`)
+  jokaisen 532 tiesääaseman kohdalle, 3 h välein 96 h eteenpäin: lämpötila, kastepiste, kosteus, sade,
+  pilvisyys ja tuuli. Tiivis muoto (asemat × ajat × suureet).
+- Mitattu lisäkoko: **0,5 Mt per ajo** (~4 Mt/pv).
+- Ennusteen epäonnistuminen ei kaada kuvien keruuta; virhe kirjataan manifestiin (`forecastErrors`).
+
+**Miksi muokattu ennuste eikä ECMWF:** Muokattu ennuste on sama, jonka ihmiset näkevät, ja siihen
+ilmatieteilijät ovat jo yhdistäneet mallit. ECMWF:n raakaennuste voidaan lisätä myöhemmin vertailuksi.
+
+**Tekninen huomio:** Ilmatieteen laitoksen moniasemahaku toimii toistetulla `latlon`-parametrilla
+(`latlons` palautti nollan tulosta). 60 asemaa per pyyntö, eli 9 pyyntöä per ajo.
+
+**Kameroiden metatiedot (versio 3):** lisättiin tieosoite (tieosa + etäisyys, tiekohtaista järjestystä varten)
+ja nimet kolmella kielellä (fi/sv/en).
+
+**Ei vielä pilvessä:** Arkistointi alkaa vasta, kun keräin pushataan GitHubiin.
+
+## 2026-11-09 · Aikajana, Liukastumassa, tiekohtainen näkymä, varoitukset ja kielet
+
+**24 h historia:** Digitrafficin v2-rajapinnassa on asemakohtainen historia (enintään 24 h, 5 min välein).
+`build_site.py` hakee sen 166 asemalle (optinen anturi ja alle 5 km kamerasta), kaksi anturia per asema
+(keliluokka ja kitka), ja tiivistää tunneittain (kunkin tunnin viimeisin arvo, enintään 1 h vanha).
+*Miksi tämä eikä oma arkisto:* toimii heti eikä vaadi satojen megatavujen lataamista Hugging Facesta
+sivun rakentamiseen. Oma arkisto on tarkoitettu opetusdataksi.
+
+**Aikajana:** liukusäädin −24 h … nyt sekä toisto. Kartan värit, selitteen määrät, tiekohtainen nauha ja
+kameran paneeli seuraavat valittua hetkeä. Mennyt hetki näkyy keltaisena tekstinä, ettei sitä luule nykyhetkeksi.
+
+**Liukastumassa-sääntö** (määritelty etukäteen, ei datan perusteella valittu):
+kamera listataan, jos (a) keli on nyt luminen/sohjoinen tai jäinen ja jokin viimeisen 6 tunnin
+mittauksista oli parempi, tai (b) kitka on pudonnut vähintään 0,25 kuuden tunnin sisällä ja on nyt alle 0,5.
+Järjestys: huonoin keli ensin, sitten tuorein muutos. Ensimmäisellä ajolla 6 kameraa: vt 6 Lappeenrannassa
+neljä ja vt 7 Virolahdella yksi muuttui kuivasta lumiseksi tunnin sisällä (lumikuuro), sekä Enontekiö (luminen → jää).
+
+**Tiekohtainen näkymä:** tiet, joilla on vähintään 3 mitattua kameraa. Kamerat järjestetään tieosoitteen
+mukaan (tieosa, sitten etäisyys osan alusta). Näkymässä on värinauha tien alusta loppuun, pahin kohta ja lista.
+Kartta rajautuu valittuun tiehen.
+
+**Viralliset liikennesäävaroitukset:** Ilmatieteen laitoksen CAP-syöte, `eventCode = trafficWeather`.
+Yksi syöte riittää, koska jokaisessa varoituksessa on info-osa per kieli (fi/sv/en). Alueet ovat suljettuja
+polygoneja (tuhansia pisteitä), joten ne yksinkertaistetaan Douglas–Peuckerilla (toleranssi 0,01°): 4 varoitusta
+= 77 kt. *Bugi matkalla:* suljetun renkaan yksinkertaistus romahti kahteen pisteeseen (alku = loppu). Korjattu
+jakamalla rengas kauimmaisen pisteen kohdalta.
+- **Kartalla vain sillä hetkellä voimassa olevat varoitukset.** Ensimmäinen versio piirsi kaikki neljä
+  (ti–la), ja koko Keski-Suomi peittyi keltaiseen, vaikka yksikään ei ollut voimassa. Tulevat näkyvät listalla
+  merkinnällä "tulossa", ja kartalla vain kun ne avataan.
+- Esitetään erillään omista tiedoista: katkoviivareunus, otsikko "Virallinen varoitus · Ilmatieteen laitos",
+  alkuperäinen teksti ja linkki lähteeseen.
+
+**Kielet:** suomi ja englanti. Kaikki tekstit ovat yhdessä sanakirjassa (`STR`), kameroiden nimet tulevat
+Fintrafficilta ja varoitukset Ilmatieteen laitokselta valitulla kielellä. Kieli valitaan järjestyksessä:
+`?lang=`, aiempi valinta (localStorage), selaimen kieli. Ruotsi on myöhemmin pelkkä uusi sanakirja.
+*Miksi nyt:* sivulla on vähän tekstiä, ja jälkikäteen jokainen näkymä pitäisi käydä uudestaan läpi.
+
+**Mobiili:** vasen kortti on puhelimessa oletuksena taitettu (näkyvät otsikko ja välilehdet), ja välilehden
+napautus avaa sen. Kun listasta valitsee kameran, kortti taittuu ja kartta siirtää kameran paneelin yläpuolelle.
+
+**Jätettiin:**
+- *Tien seuraaminen ja ilmoitukset:* vaatii ilmoituskanavan (esim. Telegram-botti) ja tallennettavan tilan, joten
+  se tehdään omana kokonaisuutenaan.
+- *GitHub Pages -julkaisu:* käyttäjän päätöksellä vasta, kun sivu on valmiimpi.
+- *Ruotsi:* myöhemmin, rakenne on valmis.
+
+## 2026-11-09 · Logo, vaaleammat paneelit ja aikajana pylväiksi
+
+**Logo:** oma SVG-merkki: kameran rungossa linssi, jonka sisällä on perspektiivissä kapeneva tie
+**keltaisella keskiviivalla** (kuten suomalaisilla teillä) ja punainen "tallentaa"-piste. Toimii yhdellä
+värillä 22 px:n koossa, ja sama merkki on selaimen välilehden kuvake (inline-SVG, ei erillistä tiedostoa).
+Valmiita ikonikirjastoja ei käytetty, koska geneerinen kameraikoni ei kerro tiestä mitään.
+
+**Paneelit vaaleammiksi** käyttäjän palautteesta: pinta #121519 → #171b21, korostus #181c22 → #1f242c ja
+reunat #262b33 → #2e353f. Kartan tausta pysyi ennallaan, joten kontrasti kartan ja paneelien välillä kasvoi.
+
+**Aikajana:** pelkkä liukusäädin korvattiin **25 pylväällä, yksi per tunti**. Kukin pylväs näyttää, mikä osuus
+mitatuista kameroista oli missäkin kelissä (kuiva alimpana, jää ylimpänä). Valittu tunti korostuu
+valkoisella reunuksella, menneet tunnit himmeämpinä. Asteikossa on kellonajat (19.00, 01.00, …, Nyt)
+"−12 h":n sijaan. Ensimmäisessä datassa näkyy suoraan yön märkyys ja päivän kuivuminen.
+- Saavutettavuus: alla on edelleen tavallinen `input[type=range]` (näkymätön), joten näppäimistö ja
+  ruudunlukijat toimivat. Fokus näkyy koko aikajanan ympärillä.
+- Mennyt hetki näytetään muodossa "ma klo 11.00" (aiemmin "Klo ma 11.00").
+
+**Varoitusten lähde:** irrallinen "Ilmatieteen laitos" -rivi listan lopussa näytti otsikolta. Nyt otsikon alla
+on kuvaus "Ilmatieteen laitoksen viralliset varoitukset", ja otsikko on vahvempi.
+
+## 2026-11-09 · Mobiilin sulkemisbugi, varoitukset omaan paneeliin, väljempi kortti
+
+**Bugi: sulkemisrasti ei toiminut.** Painikkeessa oli `onclick="close()"`. Selain etsii inline-käsittelijän
+nimet ensin elementistä ja `document`-oliosta, jolloin `close()` osui `document.close()`-metodiin eikä
+omaan funktioon. Työpöydällä bugi jäi piiloon, koska paneelin sai kiinni klikkaamalla karttaa. Mobiilissa
+karttaa ei paneelin ja kortin välissä juuri näkynyt, joten paneelia ei saanut kiinni lainkaan.
+*Korjaus:* funktio nimettiin `closePanel`, ja painikkeet käsitellään delegoidulla kuuntelijalla (ei inline-käsittelijöitä).
+
+**Mobiili:**
+- Kun kamera- tai varoituspaneeli avautuu, vasen kortti taittuu automaattisesti, jotta kartta näkyy.
+- Paneelin saa kiinni pyyhkäisemällä alas kahvasta tai otsikosta (90 px:n alue yläreunassa, ja vain kun
+  paneelin sisältö on vieritetty ylös, ettei vieritys sekoitu sulkemiseen).
+- **Liikennesäävaroitukset pois kortista:** Kartta-välilehdellä on puhelimessa yksi rivi "Liikennesäävaroitukset
+  4 ›", joka avaa listan alhaalta nousevaan paneeliin. Aiemmin neljä varoitusta täytti kortin ja peitti kartan.
+  Työpöydällä lista pysyy kortissa.
+
+**Työpöytä: väljempi kortti** käyttäjän palautteesta ("ahtaan oloinen"). Ahtaus johtui siitä, että kaikki välit
+olivat samaa pientä kokoa, joten pelkkä varoitusten yläpuolen tila ei olisi riittänyt. Muutokset: reunat
+14 → 16 px, osioiden yläväli 10 → 18 px (osioiden väli nyt selvästi suurempi kuin rivien), selitteen rivit
+ja varoitusrivit korkeammiksi, varoitusotsikot 13 → 14 px ja kortti 336 → 356 px.
+
+**Testaus:** sulkeminen, taittuminen ja varoituspaneeli testattu Chromella ilman ikkunaa (mobiilikoko 390×844).
+Pyyhkäisyä ei voi testata tällä tavalla, joten se on tarkistettava oikealla puhelimella.
+
+## 2026-11-09 · Kortti ilman vierityspalkkia
+
+**Ongelma:** vasemman kortin korkeus oli rajattu (ruutu − 120 px), koska lähdetiedot olivat kortin alla, ja
+sisältö (~870 px) ei mahtunut tavallisiin läppärinäyttöihin. Mitattu: 1280×720, 1366×768, 1440×800 ja
+1536×864 vierittivät. Vain 1440×900 ja 1920×1080 mahtuivat.
+
+**Päätös:**
+- Kortti saa käyttää koko korkeuden (ruutu − 32 px). **Lähdetiedot siirrettiin kortin alaosaan.** Samalla ne
+  näkyvät nyt myös puhelimessa, missä ne olivat aiemmin piilossa, vaikka OpenStreetMapin lisenssi edellyttää
+  attribuution näkymistä.
+- **Alle 900 px korkeilla näytöillä varoituslista tiivistyy riviksi** "Liikennesäävaroitukset 4 ›", joka avaa
+  listan oikeanpuoleiseen paneeliin (sama malli kuin puhelimessa). Korkeilla näytöillä lista näkyy kortissa.
+  Tiivistetyn kortin sisältö on 460 px, joten se mahtuu kaikissa mitatuissa koissa.
+- Jos jokin lista (Liukastumassa, Tiet) on silti pidempi kuin tila, vierityspalkki on ohut ja kortin värinen.
+
+**Jätettiin:** väljyyden pienentäminen (käyttäjä halusi juuri lisää väljyyttä) ja selitteen muuttaminen kahteen
+sarakkeeseen työpöydällä (osuuspalkit eivät toimi kapeissa sarakkeissa).
+
+## 2026-11-09 · Varoitukset avautuvat työpöydällä alaspäin
+
+**Muutos edelliseen:** matalilla työpöytänäytöillä varoitusrivi avasi listan oikeaan paneeliin. Nyt se avautuu
+**rivin alle** (nuoli kääntyy alas, `aria-expanded`). Puhelimessa lista avautuu edelleen alhaalta nousevaan paneeliin.
+
+**Miksi:**
+- Sama logiikka kaikilla työpöytänäytöillä: korkealla näytöllä lista on jo kortissa.
+- Oikea paneeli näyttää aina yhden asian (kamera tai varoitus). Kun sinne avautui lista, varoituksen avaaminen
+  korvasi listan, eikä takaisin päässyt. Nyt lista pysyy kortissa, ja varoituksia voi käydä läpi yksi kerrallaan.
+  Avattu varoitus korostuu listassa keltaisella.
+- Vieritys on hyväksyttävää, kun käyttäjä itse avaa listan. Oletustilassa kortti mahtuu edelleen ilman vierityspalkkia.
+
+## 2026-11-09 · Reittihaku
+
+**Miksi:** Kaikki eivät tiedä tienumeroita, mutta tietävät, minne ovat menossa ("kotoa Leville").
+
+**Toteutus:** uusi välilehti *Reitti*: Mistä/Minne-haku ehdotuksineen ja "Oma sijainti". Reitti piirretään kartalle,
+reitin kamerat korostetaan ja muut himmennetään. Yhteenvedossa: matka ja aika, kelijakauma mitatuilla kohdilla,
+liukkaat kohdat ja ensimmäisen etäisyys lähdöstä, reitille osuvat liikennesäävaroitukset ja ilman mittausta olevien
+kameroiden osuus. Lisäksi nauha kelistä kilometreittäin ja kamerat järjestyksessä km-lukemineen.
+
+**Palvelut** (molemmat ilmaisia, CORS sallittu, testattu selaimesta):
+- Paikkahaku: **Photon** (komoot, OpenStreetMap-data), rajattu Suomen alueeseen.
+- Reititys: **OSRM FOSSGISin palvelimella** (routing.openstreetmap.de). Helsinki → Levi: 999 km, n. 13 h 30 min.
+- *Rajoitus:* molemmat on tarkoitettu kohtuukäyttöön, eikä niillä ole palvelutasolupausta. Siksi haku tehdään
+  vasta 350 ms kirjoittamisen jälkeen (vähintään 3 merkkiä, edellinen pyyntö perutaan), ja reitti haetaan kerran
+  per valinta. Jos käyttö kasvaa, vaihtoehdot ovat oma OSRM-palvelin tai maksullinen palvelu (esim. GraphHopper)
+  välityspalvelimen takana, jottei avain näy selaimessa.
+
+**Kameran kuuluminen reittiin:** enintään 0,6 km reittiviivasta **ja** kameran tienumero on reitin tienumeroiden
+joukossa (OSRM:n reittiohjeiden `ref`, esim. "4; 77"). Pelkällä etäisyydellä mukaan tuli risteävien teiden
+kameroita (esim. Kehä III Vantaalla vt 4:n risteyksessä): Helsinki–Levi 80 → 72 kameraa tienumerosuodatuksella.
+
+**Varoitukset reitillä:** varoitusalue lasketaan osuvaksi, jos jokin reitin pisteistä (joka 25.) on alueen sisällä.
+Yhteenvedossa on yksi rivi (määrä + ensimmäisen alkuhetki), ja "Näytä varoitukset" avaa vain reitin varoitukset.
+
+**Sanavalinnat:** yhteenveto kertoo mittaukset ("Liukasta 2 kohdassa"), ei neuvo ajamaan tai olemaan ajamatta.
+Alla on maininta: "Tilannekuva mitatuista kohdista, ei ajokeliennuste. Tarkista viralliset varoitukset ennen lähtöä."
+
+**Jätettiin:** reitin kiertoreittien vertailu (esim. vt 4 vs. vt 5), välipisteet ja reitin tallennus. Ne sopivat
+"Tien seuraaminen" -kokonaisuuteen.
+
+## 2026-11-09 · Julkaisu GitHub Pagesiin
+
+**Päätös:** Sama 3 tunnin keruuajo rakentaa sivun datan (`build_site.py`) ja julkaisee `site/`-kansion Pagesiin
+(`upload-pages-artifact` + `deploy-pages`). Osoite: https://petudesign.github.io/kelikamera/
+
+**Valinnat:**
+- **Generoitu data ei mene repoon** (`site/data/latest.json`, `warnings.json` ovat `.gitignore`ssa). Muuten
+  jokainen ajo tekisi commitin, ja historia täyttyisi datamuutoksista. Repossa on vain `finland.geojson`, joka ei muutu.
+- **Sivun rakentaminen ei saa kaataa keruuta:** rakennusvaihe on `continue-on-error`, ja julkaisu tehdään vain, jos
+  se onnistui. Epäonnistuessa keruu on silti tallessa Hugging Facessa, ja sivu jää edelliseen versioon.
+- Julkaisu omana työnään (`deploy`), koska Pages vaatii oman `github-pages`-ympäristönsä.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.

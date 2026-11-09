@@ -1,5 +1,7 @@
 # Kelikamera AI
 
+**Sivu:** https://petudesign.github.io/kelikamera/ (päivittyy 3 h välein)
+
 Tavoite: arvioida tien pinnan tila ja kitka Fintraffic-kelikameroiden kuvista. Opetusdata syntyy
 automaattisesti, kun jokainen kuva yhdistetään lähimmän tiesääaseman anturimittaukseen samalta hetkeltä.
 
@@ -9,11 +11,11 @@ Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md). Sovitut ominaisuud
 ## Rakenne
 
 ```
-collector/collect.py   keräin: yksi ajo = yksi tar (kuvat + manifest.json + weather.json.gz)
+collector/collect.py   keräin: yksi ajo = yksi tar (kuvat, anturit, tie- ja sääennusteet)
 collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä sääasemasta
 collector/count.py     luokkalaskuri: montako esimerkkiä kustakin kelistä on kertynyt
-collector/build_site.py karttasivun data → site/data/latest.json
-site/                  karttasivu (staattinen, MapLibre)
+collector/build_site.py karttasivun data → site/data/ (nykytila, 24 h historia, liikennesäävaroitukset)
+site/                  karttasivu (staattinen, MapLibre, suomi/englanti)
 tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
 .github/workflows/     ajastus GitHub Actionsissa (3 h välein)
@@ -39,4 +41,6 @@ Ilman `HF_TOKEN`- ja `HF_REPO`-ympäristömuuttujia tiedostot jäävät vain `ou
 
 ## Lähde ja lisenssi
 
-Kuvat ja anturidata: Fintraffic / [digitraffic.fi](https://www.digitraffic.fi/), lisenssi CC BY 4.0.
+Kuvat, anturidata ja tiesääennusteet: Fintraffic / [digitraffic.fi](https://www.digitraffic.fi/), CC BY 4.0.
+Sääennusteet ja liikennesäävaroitukset: [Ilmatieteen laitos](https://www.ilmatieteenlaitos.fi/avoin-data), CC BY 4.0.
+Kartta: OpenFreeMap, © OpenMapTiles, © OpenStreetMap. Paikkahaku: Photon (komoot). Reititys: OSRM (FOSSGIS).

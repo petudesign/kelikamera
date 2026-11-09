@@ -11,19 +11,24 @@ Tila: ✅ valmis · 🔨 työn alla · ⏳ sovittu, ei aloitettu
 |---|---|---|
 | ✅ | Keruu 3 h välein (GitHub Actions → Hugging Face) | |
 | ✅ | Tunnisteet optisesta kelianturista + luokkalaskuri | |
-| ✅ | Karttasivu anturidatalla, rajattu Suomeen | Vain paikallisesti |
+| ✅ | Karttasivu anturidatalla, rajattu Suomeen | |
+| ✅ | Paneelien uusi ilme (UI v2) | |
+| ✅ | Logo, vaaleammat paneelit, aikajana tuntipylväinä | |
 | ✅ | Edistymisloki + lähtötason kuvat | |
-| ⏳ | **Sääennusteiden arkistointi keruun yhteydessä** | Aikakriittinen: 3 päivän arvion kouluttaminen vaatii, että tiedetään, mitä ennuste sanoi silloin |
-| ⏳ | Julkaisu GitHub Pagesiin, päivittyy keruun yhteydessä | |
+| ✅ | **Sääennusteiden arkistointi keruun yhteydessä** | Pilvessä 2026-11-09 alkaen |
+| ✅ | Julkaisu GitHub Pagesiin, päivittyy keruun yhteydessä | petudesign.github.io/kelikamera |
+| ✅ | Siirto Digitrafficin v2-rajapintaan (v1 poistuu 2027-04-13) | |
+| ✅ | Kielet: suomi ja englanti | Ruotsi myöhemmin |
 
 ## Ominaisuudet (sovittu 2026-11-09)
 
 | | Ominaisuus | Tarvitsee mallia? | Datalähde |
 |---|---|---|---|
-| ⏳ | **Viralliset ajokelivaroitukset** näkyviin sellaisinaan, lähde mainiten | Ei | Ilmatieteen laitos |
-| ⏳ | **"Liukastumassa"-lista:** kamerat, joissa keli on muuttunut huonompaan viime tunteina | Ei (malli laajentaa) | Oma keruu |
-| ⏳ | **Tiekohtainen näkymä:** esim. vt 4 nauhana etelästä pohjoiseen, pahin kohta korostettuna | Ei (malli laajentaa) | Oma keruu |
-| ⏳ | **Aikajana:** viimeiset 24 h kelattavana | Ei | Oma keruu |
+| ✅ | **Viralliset ajokelivaroitukset** näkyviin sellaisinaan, lähde mainiten | Ei | Ilmatieteen laitos |
+| ✅ | **"Liukastumassa"-lista:** kamerat, joissa keli on muuttunut huonompaan viime tunteina | Ei (malli laajentaa) | Digitrafficin 24 h historia |
+| ✅ | **Tiekohtainen näkymä:** esim. vt 4 nauhana etelästä pohjoiseen, pahin kohta korostettuna | Ei (malli laajentaa) | Oma keruu + tieosoitteet |
+| ✅ | **Reittihaku:** mistä–minne, reitin kamerat, liukkaat kohdat ja varoitukset yhteenvetona | Ei (malli laajentaa) | Photon + OSRM (FOSSGIS) |
+| ✅ | **Aikajana:** viimeiset 24 h kelattavana | Ei | Digitrafficin 24 h historia |
 | ⏳ | **Tekoälyarvio** harmaille kameroille | Kyllä | Malli |
 | ⏳ | **"Mitä malli katsoi"** -lämpökartta kuvan päällä | Kyllä | Malli |
 | ⏳ | **3 päivän liukkausriski** tieosuuksittain | Oma ennustemalli | Ilmatieteen laitos (ECMWF + muokattu ennuste) + oma keruu |
