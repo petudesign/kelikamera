@@ -104,10 +104,51 @@ jos tienpintakulmat eivät riitä.
   (keruu 78 s, pilvessä hitaampi kuin paikallisesti 27 s). Datasetti ei näy kirjautumattomalle (HTTP 401).
 - Tästä eteenpäin ajastus 3 h välein.
 
+## 2026-11-09 · Tunnisteiden lähde
+
+**Selvitys:** Fintraffic ei julkaise koodistoa antureille `TIENPINNAN_TILA_*` ja `OPTISEN_ANTURIN_KELI*`.
+Rajapinta palauttaa tyhjät selitteet, ja OpenConditions-projekti toteaa saman. Muiden projektien arvaukset
+ovat keskenään ristiriitaisia (digitraffic_hacs: 0 = kuiva; Katu-Maps: vanha KELI-koodisto). Fintraffiicin
+omassa koodissa (tmfg/digitraffic-road, `V1.4.12__Sensor_value_descriptions.sql`) on koodisto vanhalle
+`KELI_1`-anturille: 0 vika, 1 kuiva, 2 kostea, 3 märkä, 4 märkä+suola, 5 kuura, 6 lumi, 7 jää,
+8 tod. kostea+suola, 9 sohjoinen.
+
+**Tarkistus datasta** (koodi vs. samalla asemalla mitatut määrät, ajo 2026-11-09 16:02):
+- `OPTISEN_ANTURIN_KELI1` käyttäytyy täsmälleen KELI-koodiston mukaan: 1 → vettä 0 mm ja kitka 0,82;
+  2 → vettä 0,03 mm; 3 → vettä 0,13 mm ja kitka 0,78; 6 → lunta; **7 → jäätä 1,8 mm ja kitka 0,11.**
+- `TIENPINNAN_TILA_1` noudattaa eri koodistoa: 1 kuiva, 2 kostea/märkä, 11 näyttää jäältä (kitka 0,11),
+  0 todennäköisesti vika. 3 ja 10 epäselviä.
+
+**Päätös:** Luokka tulee optisesta anturista (KELI-koodisto), ja lisäksi tallennetaan mitatut suureet: kitka,
+vesi, lumi ja jää (mm) sekä lämpötilat. Kitka on lopulta tärkein ennustettava asia, koska se kertoo
+liukkauden suoraan. `TIENPINNAN_TILA_1` tallennetaan raakana, mutta sitä ei käytetä luokkana.
+
+**Luokat:** kuiva · kostea (2, 8) · märkä (3, 4) · luminen (6, 9) · jää/kuura (5, 7). Suolaisuus ei näy
+kuvasta, joten suola-alaluokat yhdistetään.
+
+**Jätettiin:** `TIENPINNAN_TILA_1` luokkana. Sillä saataisiin noin kaksinkertainen kattavuus (419 asemaa
+vs. 252), mutta koodiston arvaaminen tuottaisi väärää opetusdataa. Arvioidaan uudelleen, jos koodisto
+selviää tai talvidata vahvistaa tulkinnan.
+
+**Kuvan ja mittauksen aikaero** saa olla enintään 30 min.
+
+## 2026-11-09 · Luokkalaskuri, ensimmäinen tulos
+
+`collector/count.py` kertoo per luokka kuvat, **eri kamerat** (tärkeämpi kuin kuvamäärä, koska saman
+kameran kuvat muistuttavat toisiaan), yökuvat (IR) ja mediaanikitkan. Alustava "valmis"-raja on 30 eri
+kameraa per luokka.
+
+Ensimmäinen tilanne (1 täysi ajo): kuiva 138 kameraa, kostea 49, märkä 69, **luminen 3, jää/kuura 2**.
+Odotetusti talviluokat puuttuvat vielä.
+
+**Havainnot:**
+- 256/553 tienpintakuvasta jää ilman tunnistetta, koska lähimmällä asemalla ei ole optista anturia.
+- **Kamera ↔ lähin asema: mediaani 3,5 km, mutta 10 % yli 21 km ja pisin 98 km.** Kaukaiset parit ovat
+  todennäköisesti vääriä tunnisteita (eri tie, eri keli). Etäisyysraja (alustavasti esim. 5 km) päätetään,
+  kun nähdään, paljonko se karsii talviluokkia.
+
 ## Avoimet kysymykset
 
-- **Mitä `TIENPINNAN_TILA_1`:n koodit tarkoittavat?** Rajapinta ei anna selitteitä. Havaitut arvot: 0, 1, 2, 3, 10, 11.
-  Samoin `OPTISEN_ANTURIN_KELI1` (havaitut 1, 2, 3, 6, 7, 9). Selvitettävä Digitrafficin dokumentaatiosta tai
-  Fintrafficilta ennen koulutusta.
-- Kuinka kaukana kamerat keskimäärin ovat asemistaan, ja paljonko se heikentää tunnisteita?
+- `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
+- Etäisyysraja kameran ja aseman välille.
 - Kannattaako keruuta tihentää, kun keli muuttuu nopeasti (esim. lämpötila nollan tuntumassa)?

@@ -9,6 +9,8 @@ Vaihe nyt: **datan keruu talvelta 2026–27.** Päätökset ja niiden perustelut
 
 ```
 collector/collect.py   keräin: yksi ajo = yksi tar (kuvat + manifest.json + weather.json.gz)
+collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä sääasemasta
+collector/count.py     luokkalaskuri: montako esimerkkiä kustakin kelistä on kertynyt
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
 .github/workflows/     ajastus GitHub Actionsissa (3 h välein)
 ```
