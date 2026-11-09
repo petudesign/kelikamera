@@ -2,7 +2,9 @@
 <html lang="fi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
 <title>Kelikamera · Suomen tiet nyt</title>
 <meta name="description" content="Tien pinnan tila Fintrafficin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' style='background:%230b0d10' width='22' height='22' viewBox='0 0 24 24' aria-hidden='true'><defs><clipPath id='lens'><circle cx='12' cy='13' r='5.2'/></clipPath></defs><path d='M8.2 6 9.6 3.6h4.8L15.8 6' fill='none' stroke='%23eef1f4' stroke-width='1.7' stroke-linejoin='round'/><rect x='1.8' y='6' width='20.4' height='14.6' rx='3' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><circle cx='12' cy='13' r='5.2' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><g clip-path='url(%23lens)' stroke-linecap='round'><path d='M9.3 18.5 11.3 8.2M14.7 18.5 12.7 8.2' stroke='%23eef1f4' stroke-width='1.2'/><path d='M12 17.6v-1.8M12 14.3v-1.5M12 11.4v-1.2' stroke='%23f5c518' stroke-width='1.2'/></g><circle cx='18.6' cy='9' r='1' fill='%23ff4766'/></svg>">
@@ -16,6 +18,11 @@
   --kuiva:#34c77b; --kostea:#8fc7ff; --marka:#2f7bf6; --luminen:#f2f4f8; --jaa:#ff4766; --none:#5b6573;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+html,body{overscroll-behavior:none}
+button,[role="tab"],a{touch-action:manipulation}
+button,[role="tab"]{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.tabpanel,.panel .scroll,.sugg{overscroll-behavior:contain}
 html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Fira Sans",system-ui,sans-serif}
 button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -24,7 +31,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .sw{display:inline-block;width:10px;height:10px;border-radius:1px;flex:none}
 
 /* ---------- vasen kortti ---------- */
-.key{position:fixed;left:16px;top:16px;z-index:5;width:356px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+.key{position:fixed;left:16px;top:16px;z-index:5;width:356px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;
   background:var(--surface);border:1px solid var(--rule);border-radius:4px}
 .key header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--rule)}
 .brand{display:flex;align-items:center;gap:8px}
@@ -45,7 +52,6 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .tabpanel[hidden]{display:none}
 .rows{list-style:none;padding:8px 0}
 .row{width:100%;display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:12px;padding:9px 16px 12px;text-align:left;position:relative}
-.row:hover{background:var(--surface-2)}
 .row .lbl{font-size:14px}
 .row .n{font-size:13px;color:var(--text-2)}
 .row .share{position:absolute;left:38px;right:16px;bottom:5px;height:2px;background:var(--rule)}
@@ -72,7 +78,6 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .wlist{padding:4px 14px 14px 20px}
 .list{list-style:none}
 .item{width:100%;display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;padding:11px 16px;text-align:left;border-bottom:1px solid var(--rule)}
-.item:hover{background:var(--surface-2)}
 .item b{display:block;font-size:14px;font-weight:500}
 .item small{display:block;font-size:12px;color:var(--text-2)}
 .item .ago{font-size:12px;color:var(--text-2);white-space:nowrap}
@@ -90,14 +95,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .field{position:relative}
 .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px}
 .field .in{display:flex;gap:6px}
-.field input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--rule);border-radius:2px;background:var(--surface-2);color:var(--text);font:inherit;font-size:14px}
+.field input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--rule);border-radius:2px;background:var(--surface-2);color:var(--text);font:inherit;font-size:16px}
 .field input:focus-visible{outline:2px solid var(--focus);outline-offset:0}
 .iconbtn{flex:none;width:38px;display:grid;place-items:center;border:1px solid var(--rule);border-radius:2px;color:var(--text-2)}
-.iconbtn:hover{color:var(--text);background:var(--surface-2)}
 .sugg{position:absolute;left:0;right:0;top:100%;z-index:3;list-style:none;background:var(--surface-2);border:1px solid var(--rule);border-top:0;max-height:220px;overflow:auto}
 .sugg button{display:block;width:100%;text-align:left;padding:8px 10px;font-size:14px}
 .sugg button small{display:block;font-size:12px;color:var(--text-2)}
-.sugg button:hover,.sugg button[aria-selected="true"]{background:var(--rule)}
+.sugg button[aria-selected="true"]{background:var(--rule)}
 .rbtns{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-2);min-height:24px}
 .rbtns button{color:var(--text-2);text-decoration:underline}
 .rsum{padding:12px 16px 14px;border-top:1px solid var(--rule)}
@@ -121,11 +125,10 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .item .km{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ---------- aikajana ---------- */
-.timeline{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));
+.timeline{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));
   display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;padding:6px 14px 6px 8px;
   background:var(--surface);border:1px solid var(--rule);border-radius:4px}
 .timeline .play{width:40px;height:40px;display:grid;place-items:center;border-radius:2px}
-.timeline .play:hover{background:var(--surface-2)}
 .tl{position:relative;height:50px}
 .tbars{position:absolute;left:0;right:0;top:4px;height:28px;display:flex;gap:2px;align-items:stretch}
 .tbars .col{flex:1;display:flex;flex-direction:column-reverse;border-radius:1px;overflow:hidden;opacity:.4;transition:opacity .15s}
@@ -150,7 +153,6 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .status b{display:block;font-size:22px;font-weight:600;line-height:1.15}
 .status small{display:block;margin-top:3px;font-size:12px;color:var(--text-2)}
 .x{flex:none;width:40px;height:40px;margin:-6px -6px 0 0;display:grid;place-items:center;border-radius:2px;color:var(--text-2)}
-.x:hover{background:var(--surface-2);color:var(--text)}
 .place{padding:12px 14px 10px 20px}
 .place h2{font-size:15px;font-weight:600}
 .place p{font-size:13px;color:var(--text-2)}
@@ -193,7 +195,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .maplibregl-popup-tip{display:none}
 
 @media (max-width:720px){
-  .key{left:8px;right:8px;top:8px;width:auto;max-height:52vh}
+  .key{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:auto;max-height:52vh;max-height:52dvh}
   .fold{display:grid}
   .key.collapsed .tabpanel{display:none}
   .key.collapsed .tabs button[aria-selected="true"]{border-bottom-color:transparent}
@@ -204,11 +206,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   #warnsec h2,#warnsec .sub,#warnsec .warn,#warnsec>.note{display:none}
   #warnsec{padding-top:0}
   .warnsum{display:flex}
-  .timeline{bottom:8px;width:calc(100% - 16px)}
-  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;border-radius:8px 8px 0 0;border-bottom:0;
+  .timeline{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:calc(100% - 16px)}
+  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;max-height:72dvh;border-radius:8px 8px 0 0;border-bottom:0;
+    padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .45s cubic-bezier(.32,.72,0,1);
     transform:translateY(105%);z-index:7}
   .panel.on{transform:none}
   .panel::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--rule);margin:8px auto 0}
+  .panel .status{touch-action:none}  /* otsikkoalue on vetokahva: selain ei vieritä eikä päivitä sivua kesken vedon */
   .maplibregl-ctrl-bottom-right{display:none}
 }
 /* matalat näytöt: varoituslista tiivistyy riviksi, joka avaa listan sivupaneeliin */
@@ -222,6 +226,19 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .warnsum svg{transition:transform .2s}
 .warn[aria-current="true"] b{color:var(--warn)}
 #warnsec.open .warnsum svg{transform:rotate(90deg)}
+/* painallus: palaute heti kun sormi osuu (toimii kaikilla syötteillä) */
+.row,.item,.warn,.warnsum,.tabs button,.iconbtn,.x,.play,.lang button,.sugg button{transition:background-color .1s ease-out}
+.row:active,.item:active,.warn:active,.warnsum:active,.tabs button:active,.sugg button:active{background:var(--surface-2)}
+.iconbtn:active,.x:active,.play:active,.lang button:active{background:var(--rule)}
+/* hover vain laitteille, joilla on oikea osoitin – kosketus jättäisi hoverin päälle */
+@media (hover:hover) and (pointer:fine){
+  .row:hover{background:var(--surface-2)}
+  .item:hover{background:var(--surface-2)}
+  .iconbtn:hover{color:var(--text);background:var(--surface-2)}
+  .sugg button:hover{background:var(--rule)}
+  .timeline .play:hover{background:var(--surface-2)}
+  .x:hover{background:var(--surface-2);color:var(--text)}
+}
 @media (prefers-reduced-motion:reduce){.panel{transition:none}}
 </style>
 </head>
@@ -251,11 +268,11 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
     <div class="rform">
       <div class="field"><label for="from" data-t="from"></label>
-        <div class="in"><input id="from" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sugg-from">
+        <div class="in"><input id="from" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-from">
           <button class="iconbtn" id="locate" type="button"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 .8v2.6M8 12.6v2.6M.8 8h2.6M12.6 8h2.6" stroke="currentColor" stroke-width="1.5"/></svg></button></div>
         <ul class="sugg" id="sugg-from" role="listbox" hidden></ul></div>
       <div class="field"><label for="to" data-t="to"></label>
-        <div class="in"><input id="to" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sugg-to"></div>
+        <div class="in"><input id="to" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-to"></div>
         <ul class="sugg" id="sugg-to" role="listbox" hidden></ul></div>
       <div class="rbtns"><span id="rstatus" role="status"></span><button id="rclear" type="button" hidden data-t="clearRoute"></button></div>
     </div>
@@ -301,7 +318,7 @@ const STR={
   frictionDrop:(a,b)=>`kitka ${a} → ${b}`,
   road:"Tie",chooseRoad:"Valitse tie",roadStart:"Tien alku",roadEnd:"Tien loppu",cams:n=>`${n} kameraa`,worst:"Pahin kohta",
   measured:"Mitattu",station:"asema",aiSoon:"Tekoälyarvio tulossa",close:"Sulje",
-  camNow:"Kamerakuva nyt · Fintraffic",friction:"Kitka µ",slippery:"Liukas · jää ~0,1",grippy:"Pitävä · kuiva 0,82",
+  camNow:"Kamerakuva · Fintraffic",camTaken:t=>`otettu ${t}`,camLatest:"tuorein kuva, ei valitulta hetkeltä",friction:"Kitka µ",slippery:"Liukas · jää ~0,1",grippy:"Pitävä · kuiva 0,82",
   roadT:"Tien lämpötila",airT:"Ilman lämpötila",water:"Vesi",snow:"Lumi",ice:"Jää",
   noMeasure:"Ei mitattua keliä",far:km=>`Lähin tiesääasema on ${km} päässä, eikä sen mittaus kerro tämän kameran kelistä.`,
   nosensor:"Lähimmällä tiesääasemalla ei ole tienpinnan kelianturia.",aiNote:"Tähän tulee tekoälyn arvio kamerakuvasta.",
@@ -327,7 +344,7 @@ const STR={
   frictionDrop:(a,b)=>`friction ${a} → ${b}`,
   road:"Road",chooseRoad:"Choose a road",roadStart:"Road start",roadEnd:"Road end",cams:n=>`${n} cameras`,worst:"Worst spot",
   measured:"Measured",station:"station",aiSoon:"AI estimate coming",close:"Close",
-  camNow:"Camera image now · Fintraffic",friction:"Friction µ",slippery:"Slippery · ice ~0.1",grippy:"Grippy · dry 0.82",
+  camNow:"Camera image · Fintraffic",camTaken:t=>`taken ${t}`,camLatest:"latest image, not from the selected time",friction:"Friction µ",slippery:"Slippery · ice ~0.1",grippy:"Grippy · dry 0.82",
   roadT:"Road temperature",airT:"Air temperature",water:"Water",snow:"Snow",ice:"Ice",
   noMeasure:"No measured conditions",far:km=>`The nearest road weather station is ${km} away, so its reading doesn't describe this camera's road.`,
   nosensor:"The nearest road weather station has no road surface sensor.",aiNote:"An AI estimate from the camera image will appear here.",
@@ -435,8 +452,14 @@ function addLayers(){
     tip.setLngLat(e.lngLat).setHTML(`${esc(nameOf(byId[p.id]))} · ${T().cls[p.k]}`).addTo(map)});
   map.on("mouseleave","cams",()=>{map.getCanvas().style.cursor="";tip.remove()});
   map.on("click",e=>{
-    const cam=map.queryRenderedFeatures(e.point,{layers:["cams"]})[0];
-    if(cam) return openCam(cam.properties.id);
+    // kosketuksessa 22 px säde (44 px kosketusalue), hiirellä 8 px; lähin piste voittaa
+    const r=matchMedia("(pointer: coarse)").matches?22:8, {x,y}=e.point;
+    const hits=map.queryRenderedFeatures([[x-r,y-r],[x+r,y+r]],{layers:["cams"]}).filter(f=>f.properties.dim!==1);
+    if(hits.length){
+      const d=f=>{const p=map.project(f.geometry.coordinates);return (p.x-x)**2+(p.y-y)**2};
+      const best=hits.reduce((a,b)=>d(b)<d(a)?b:a);
+      if(d(best)<=r*r) return openCam(best.properties.id);
+    }
     const w=map.queryRenderedFeatures(e.point,{layers:["warn-fill"]})[0];
     if(w) return openWarn(w.properties.i);
     closePanel();
@@ -765,6 +788,18 @@ function scale(fr){
     <div class="ends"><span>${T().slippery}</span><span>${T().grippy}</span></div></div>`;
 }
 const isMobile=()=>innerWidth<=720;
+// kuvan oikea ottoaika Fintrafficin kamerarajapinnasta (kuvapalvelin ei salli aikaleiman lukemista)
+async function camTime(c){
+  const preset=c.img.split("/").pop().replace(".jpg","");
+  try{
+    const d=await (await fetch(`https://tie.digitraffic.fi/api/weathercam/v1/stations/${c.id}/data`)).json();
+    const p=(d.presets||[]).find(x=>x.id===preset), el=document.getElementById("camtime");
+    if(p&&p.measuredTime&&el&&current&&current.id===c.id){
+      const mins=Math.round((Date.now()-new Date(p.measuredTime))/6e4);
+      el.textContent=` · ${T().camTaken(fmtClock(p.measuredTime))}${mins>=1?` (${mins} min)`:""}`;
+    }
+  }catch(e){}
+}
 function openCam(id,keep){
   const c=byId[id]; if(!c) return; current={type:"cam",id}; select(id);
   if(isMobile()&&!keep) setCollapsed(true);
@@ -779,7 +814,7 @@ function openCam(id,keep){
       <button class="x" aria-label="${L.close}">${X}</button></div>
     <div class="place"><h2>${esc(nameOf(c))}</h2><p>${c.road?L.road+" "+c.road+" · ":""}${esc(c.mun||"")}</p></div>
     <figure class="shot"><img src="${c.img}?t=${Math.floor(Date.now()/6e4)}" alt="${esc(nameOf(c))}">
-      <figcaption>${L.camNow}${c.view?" · "+esc(c.view):""}</figcaption></figure>
+      <figcaption>${L.camNow}${c.view?" · "+esc(c.view):""}<span id="camtime"></span>${past?`<br>${L.camLatest}`:""}</figcaption></figure>
     ${k!=="ei mittausta"?`<dl class="read">
         <div class="kv joined"><dt>${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
         ${past?"":`<div class="kv"><dt>${L.roadT}</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
@@ -794,6 +829,7 @@ function openCam(id,keep){
       <div class="strip-t"><span>${fmtClock(DATA.times[0])}</span><span>${L.now}</span></div></div>`:""}
   </div>`;
   p.classList.add("on");
+  camTime(c);
 }
 function openWarn(i,keep){
   const w=WARN[i]; if(!w) return; current={type:"warn",i}; select("");
@@ -821,13 +857,18 @@ addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
 const panelEl=document.getElementById("panel");
 panelEl.addEventListener("click",e=>{ if(e.target.closest(".x")) closePanel(); });
 // mobiili: pyyhkäisy alas kahvasta tai otsikosta sulkee paneelin
-let sy=null;
-panelEl.addEventListener("touchstart",e=>{ const top=panelEl.getBoundingClientRect().top;
-  sy=(e.touches[0].clientY-top<90 && panelEl.querySelector(".scroll").scrollTop===0)?e.touches[0].clientY:null; },{passive:true});
-panelEl.addEventListener("touchmove",e=>{ if(sy==null)return; const dy=Math.max(0,e.touches[0].clientY-sy);
+// Seuraa sormea 1:1 (ei siirtymää vedon aikana), ylöspäin vain kuminauhamainen vastus,
+// sulkeutuu joko matkasta (> 80 px) tai nopeasta näpäytyksestä alas (> 0,5 px/ms).
+let sy=null, last=null, vel=0;
+panelEl.addEventListener("touchstart",e=>{ const top=panelEl.getBoundingClientRect().top, y=e.touches[0].clientY;
+  sy=(y-top<90 && panelEl.querySelector(".scroll").scrollTop===0)?y:null; last={y,t:e.timeStamp}; vel=0; },{passive:true});
+panelEl.addEventListener("touchmove",e=>{ if(sy==null)return; const y=e.touches[0].clientY, raw=y-sy;
+  const dt=e.timeStamp-last.t; if(dt>0) vel=(y-last.y)/dt; last={y,t:e.timeStamp};
+  const dy=raw<0?raw*0.15:raw;
   panelEl.style.transition="none"; panelEl.style.transform=`translateY(${dy}px)`; },{passive:true});
 panelEl.addEventListener("touchend",e=>{ if(sy==null)return; const dy=e.changedTouches[0].clientY-sy; sy=null;
-  panelEl.style.transition=""; panelEl.style.transform=""; if(dy>80) closePanel(); });
+  panelEl.style.transition=""; panelEl.style.transform="";
+  if(dy>80 || (dy>24 && vel>0.5)) closePanel(); });
 </script>
 </body>
 </html>

@@ -430,6 +430,40 @@ Alla on maininta: "Tilannekuva mitatuista kohdista, ei ajokeliennuste. Tarkista 
   se onnistui. Epäonnistuessa keruu on silti tallessa Hugging Facessa, ja sivu jää edelliseen versioon.
 - Julkaisu omana työnään (`deploy`), koska Pages vaatii oman `github-pages`-ympäristönsä.
 
+## 2026-11-09 · Mobiilikatselmus (Emil Kowalskin mobile-native- ja gestures-ohjeet)
+
+**Lähtökohta:** pisteitä oli vaikea osua puhelimella, erityisesti harmaita (halkaisija 4–5 px). Sivu käytiin läpi
+emilkowalski/skills-repon `mobile-native`- ja `gestures`-ohjeiden tarkistuslistoilla. Ohjeet luettiin
+dokumentaationa, mitään ei asennettu.
+
+**Korjaukset:**
+- **Kosketusalue 44 px:** napautus valitsee lähimmän pisteen 22 px säteeltä (`pointer: coarse`), hiirellä 8 px.
+  Pisteiden kokoa ei kasvatettu, koska ongelma oli osuma-alueessa, ei näkyvyydessä. Himmennetyt (reitin ulkopuoliset)
+  pisteet eivät ole valittavissa.
+- **Hakukentät 16 px** (oli 14 px). iOS zoomaa alle 16 px kenttiin eikä palaa takaisin. `enterkeyhint="search"`.
+  Zoomausta ei estetty (`user-scalable=no` olisi saavutettavuusvirhe).
+- **`100vh` → `100dvh`** (kortti ja alapaneeli; `vh` jää varalle vanhoille selaimille). Osoiterivi ei enää
+  työnnä sisältöä näkyvistä.
+- **Hover vain hiirelle** (`@media (hover:hover) and (pointer:fine)`), ja kaikille painikkeille välitön
+  `:active`-palaute 100 ms. Kosketuksessa hover jäi aiemmin päälle.
+- **Napautusvälähdys pois** (`-webkit-tap-highlight-color`), `touch-action: manipulation` (ei 300 ms viivettä),
+  painikkeiden tekstiä ei voi valita pitkällä painalluksella.
+- **Pull-to-refresh pois** (`overscroll-behavior: none` sivulle, `contain` vieritettäville listoille).
+- **Notch ja kotipalkki:** `viewport-fit=cover` ja `env(safe-area-inset-*)` kortille, aikajanalle ja alapaneelille.
+  `theme-color` sivun taustaväriin.
+- **Alapaneelin pyyhkäisy** (gestures-ohjeet): seuraa sormea 1:1, ylöspäin vain kuminauhamainen vastus, ja sulkeutuu
+  joko matkasta (> 80 px) tai nopeasta näpäytyksestä alas (> 0,5 px/ms). Otsikkoalueella `touch-action: none`, ettei
+  selain vieritä kesken vedon. Paneelin liike iOS-tyylisellä käyrällä (`cubic-bezier(.32,.72,0,1)`, 450 ms).
+  *Jätettiin:* Vaul-kirjasto. Se on React-komponentti, ja sivu on tarkoituksella ilman sovelluskehystä.
+
+**Kamerakuvan teksti:** "Kamerakuva nyt" antoi ymmärtää, että kyse on livekuvasta. Nyt näytetään kuvan oikea ottoaika
+Fintrafficin kamerarajapinnasta ("otettu 19.48 (1 min)"). Kuvapalvelin ei salli `Last-Modified`-otsakkeen lukemista
+selaimesta (ei CORS), mutta rajapinta sallii. Aikajanalla mennyttä hetkeä katsottaessa lisäys "tuorein kuva, ei
+valitulta hetkeltä".
+
+**Vaatii oikean puhelimen** (ei näy selainemuloinnissa): kosketusalueen tuntuma, hover-jumit, napautusviive,
+pull-to-refresh, notch-välit ja pyyhkäisy. Koodista tarkistettu: 16 px kentät, dvh, meta-tagit, tyylisäännöt.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
