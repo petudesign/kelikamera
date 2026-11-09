@@ -10,6 +10,7 @@ Tarvitsee: pip install -r requirements-dev.txt
 from __future__ import annotations
 
 import base64
+import os
 import json
 import subprocess
 import sys
@@ -79,7 +80,7 @@ def main(url: str, out_dir: Path, setup_js: str | None = None, prefix: str = "")
                     break
             if setup_js:
                 cdp("Runtime.evaluate", expression=setup_js)
-            time.sleep(1.5)  # viimeiset häivytykset ja paneelin liuku
+            time.sleep(float(os.environ.get("SHOT_WAIT", "1.5")))  # häivytykset, paneelin liuku, verkkohaut
             shot = cdp("Page.captureScreenshot", format="png")
             errors = cdp("Runtime.evaluate", returnByValue=True,
                          expression="(window.__errors||[]).join(' | ')").get("result", {}).get("value")
