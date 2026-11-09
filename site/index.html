@@ -7,20 +7,19 @@
 <meta name="description" content="Tien pinnan tila Fintrafficin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500&family=Fira+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0b0d10; --surface:#121519; --surface-2:#181c22; --rule:#262b33;
   --text:#eef1f4; --text-2:#a3acb8; --focus:#ffd23f;
   --kuiva:#34c77b; --kostea:#8fc7ff; --marka:#2f7bf6; --luminen:#f2f4f8; --jaa:#ff4766; --none:#5b6573;
-  --mono:"Fira Code",ui-monospace,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Fira Sans",system-ui,sans-serif}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 #map{position:fixed;inset:0}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
 
 /* ---------- selite ---------- */
 .key{position:fixed;left:16px;top:16px;z-index:5;width:292px;background:var(--surface);border:1px solid var(--rule);border-radius:4px}
@@ -59,20 +58,20 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .shot figcaption{font-size:12px;color:var(--text-2);margin-top:6px}
 .read{margin:14px 14px 0 20px;border-top:1px solid var(--rule)}
 .read .kv{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--rule)}
+.read .kv.joined{border-bottom:0;padding-bottom:2px}
 .read dt{font-size:13px;color:var(--text-2)}
-.read dd{font-size:14px}
-.scale{position:relative;margin:6px 0 4px;height:28px;border-bottom:1px solid var(--rule)}
-.scale .track{position:absolute;left:0;right:0;top:6px;height:1px;background:var(--text-2);opacity:.5}
-.scale .tick{position:absolute;top:2px;width:1px;height:9px;background:var(--text-2);opacity:.6}
-.scale .tick span{position:absolute;top:11px;left:50%;transform:translateX(-50%);font:11px var(--mono);color:var(--text-2);white-space:nowrap}
-.scale .mark{position:absolute;top:0;width:3px;height:13px;margin-left:-1px;background:var(--c)}
+.read dd{font-size:15px;font-weight:500}
+.scale{padding:8px 0 12px;border-bottom:1px solid var(--rule)}
+.scale .bar{position:relative;height:8px;border-radius:1px;background:linear-gradient(90deg,var(--jaa),#f5a524 45%,var(--kuiva))}
+.scale .mark{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;background:#fff;box-shadow:0 0 0 2px var(--surface)}
+.scale .ends{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--text-2)}
 .empty{margin:14px 14px 0 20px;padding:2px 0 2px 12px;border-left:2px solid var(--none);font-size:13px;color:var(--text-2)}
 .empty strong{display:block;color:var(--text);font-weight:500;margin-bottom:2px}
 .hist{margin:16px 14px 18px 20px}
 .hist h3{font-size:13px;font-weight:500;color:var(--text-2);margin-bottom:6px}
 .strip{display:flex;gap:2px}
 .strip i{flex:1;height:14px}
-.strip-t{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--text-2);margin-top:4px}
+.strip-t{display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);margin-top:4px;font-variant-numeric:tabular-nums}
 
 .foot{position:fixed;left:16px;bottom:10px;z-index:4;font-size:11px;color:var(--text-2)}
 .foot a{color:var(--text-2)}
@@ -208,11 +207,11 @@ function applyFilter(){
   map.setFilter("cams-halo",hidden.has("jää/kuura")?["==",["get","k"],"__none"]:["==",["get","k"],"jää/kuura"]);
 }
 
-function scale(fr,color){
-  const MAX=0.9, ticks=[0,.2,.4,.6,.8];
-  return `<div class="scale" style="--c:${color}" aria-hidden="true"><div class="track"></div>
-    ${ticks.map(t=>`<div class="tick" style="left:${t/MAX*100}%"><span>${num(t,"",1)}</span></div>`).join("")}
-    ${fr!=null?`<div class="mark" style="left:${Math.min(fr,MAX)/MAX*100}%"></div>`:""}</div>`;
+function scale(fr){
+  const MAX=0.82; // kuivan tien tyypillinen kitka anturilla
+  return `<div class="scale" aria-hidden="true"><div class="bar">
+    ${fr!=null?`<i class="mark" style="left:${Math.max(0,Math.min(fr,MAX))/MAX*100}%"></i>`:""}</div>
+    <div class="ends"><span>Liukas · jää ~0,1</span><span>Pitävä · kuiva 0,82</span></div></div>`;
 }
 
 function open(id){
@@ -229,8 +228,8 @@ function open(id){
     <figure class="shot"><img src="${c.img}?t=${Date.now()}" alt="Kelikamerakuva, ${esc(c.name)}">
       <figcaption>Kamerakuva nyt · Fintraffic${c.view?" · "+esc(c.view):""}</figcaption></figure>
     ${c.cls?`<dl class="read">
-        <div class="kv"><dt>Kitka µ</dt><dd class="num">${num(c.friction,"",2)}</dd></div>
-        ${scale(c.friction,col)}
+        <div class="kv joined"><dt>Kitka µ</dt><dd class="num">${num(c.friction,"",2)}</dd></div>
+        ${scale(c.friction)}
         <div class="kv"><dt>Tien lämpötila</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
         <div class="kv"><dt>Ilman lämpötila</dt><dd class="num">${num(c.airT," °C")}</dd></div>
         <div class="kv"><dt>Vesi</dt><dd class="num">${num(c.water," mm",2)}</dd></div>

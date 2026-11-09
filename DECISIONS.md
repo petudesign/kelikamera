@@ -216,15 +216,20 @@ pillerisirut pisteineen, sateenkaariliukuväri kitkapalkissa, isoilla kirjaimill
 katkoviivalaatikko.
 
 **Päätös:** Mittaristomainen, suoralinjainen ilme (Swiss-minimalismi, tiivis tietotyökalu). ui-ux-pro-max-skillin
-suosituksista otettiin tyyli, tiheys ja fonttipari (Fira Sans + Fira Code tasalevyisille lukemille). Sen
+suosituksista otettiin tyyli, tiheys ja Fira Sans -fontti. Sen
 ehdottamaa vaaleaa yritysportaalipalettia ja sivurakennetta ei otettu, koska ne eivät sovi karttatyökaluun.
 
 - **Selite = taulukko:** värineliö, nimi, määrä tasalevyisenä ja ohut osuuspalkki (osuus kaikista kameroista).
   Rivit ovat painikkeita (`aria-pressed`), ja pois päältä oleva rivi näkyy yliviivattuna ja ontolla neliöllä,
   joten tila ei ole pelkän värin varassa.
 - **Tietopaneeli = lukemataulu:** tila 6 px värinauhana ja isona otsikkona, arvot riveinä ohuin viivoin
-  erotettuina. Kitka viivaimena 0–0,8 (ei sateenkaarta, koska värit kertovat jo tilan).
-- **Tasalevyinen fontti vain lukemille**, ei lauseille eikä aikaleimoille.
+  erotettuina.
+- **Kitka värillisenä palkkina** (punainen → keltainen → vihreä) valkoisella merkillä ja päätyselitteillä
+  "Liukas · jää ~0,1" / "Pitävä · kuiva 0,82". Kokeiltiin ohutta numeroviivainta, mutta palautettiin palkki
+  käyttäjän palautteesta: palkista näkee yhdellä silmäyksellä, ollaanko liukkaalla vai pitävällä alueella,
+  kun viivain vaati numeroiden lukemista. Väri ei ole ainoa tiedon kantaja, koska arvo ja selitteet ovat tekstinä.
+- **Ei tasalevyistä fonttia** (Fira Code poistettiin käyttäjän toiveesta). Numerot ovat Fira Sansia
+  tasalevyisillä numeromuodoilla (`tabular-nums`), jotta lukemat asettuvat siististi allekkain.
 - **Näkyvä fokus** (2 px keltainen) ja 40 px sulkemispainike. Paneelin liuku poistetaan, jos käyttäjä on
   pyytänyt vähemmän liikettä.
 
