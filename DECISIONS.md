@@ -209,6 +209,31 @@ ennuste sanoi aikanaan, vaan ainoastaan mitä tapahtui. Siksi ennusteiden arkist
 keliluokkana, koska tarkkuus heikkenee ennustepituuden kasvaessa. Mallin pitää voittaa yksinkertainen vertailukohta
 ("pakkasta ja sadetta ennustettu → riski") ja lyhyellä aikavälillä Digitrafficin oma ennuste. Muuten sitä ei julkaista.
 
+## 2026-11-09 · Paneelien uusi ilme (UI v2)
+
+**Lähtökohta:** Paneelit näyttivät geneerisiltä "AI-tehdyiltä": pyöristetyt lasikortit taustasumennuksella,
+pillerisirut pisteineen, sateenkaariliukuväri kitkapalkissa, isoilla kirjaimilla harvennetut mikro-otsikot,
+katkoviivalaatikko.
+
+**Päätös:** Mittaristomainen, suoralinjainen ilme (Swiss-minimalismi, tiivis tietotyökalu). ui-ux-pro-max-skillin
+suosituksista otettiin tyyli, tiheys ja fonttipari (Fira Sans + Fira Code tasalevyisille lukemille). Sen
+ehdottamaa vaaleaa yritysportaalipalettia ja sivurakennetta ei otettu, koska ne eivät sovi karttatyökaluun.
+
+- **Selite = taulukko:** värineliö, nimi, määrä tasalevyisenä ja ohut osuuspalkki (osuus kaikista kameroista).
+  Rivit ovat painikkeita (`aria-pressed`), ja pois päältä oleva rivi näkyy yliviivattuna ja ontolla neliöllä,
+  joten tila ei ole pelkän värin varassa.
+- **Tietopaneeli = lukemataulu:** tila 6 px värinauhana ja isona otsikkona, arvot riveinä ohuin viivoin
+  erotettuina. Kitka viivaimena 0–0,8 (ei sateenkaarta, koska värit kertovat jo tilan).
+- **Tasalevyinen fontti vain lukemille**, ei lauseille eikä aikaleimoille.
+- **Näkyvä fokus** (2 px keltainen) ja 40 px sulkemispainike. Paneelin liuku poistetaan, jos käyttäjä on
+  pyytänyt vähemmän liikettä.
+
+**Korjattu samalla:** selitteen klikkaus ennen kuin kartan tasot latautuivat heitti virheen. Nyt suodatus
+otetaan käyttöön, kun tasot ovat valmiina.
+
+**Työkalu:** `tools/screenshot.py` ottaa nyt valinnaisen JS-komennon (esim. paneelin avaus) ja raportoi sivun
+JS-virheet, joten rikkinäinen sivu ei mene kuvana läpi huomaamatta.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.

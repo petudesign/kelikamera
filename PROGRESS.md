@@ -34,3 +34,10 @@ Kartta ennen tekoälyä: kuusi kymmenestä kamerasta ilman kelitietoa.
 
 Huom: marraskuun alku, joten talviluokkia ei juuri ole (jää/kuura 1, luminen 3 kameraa).
 Ajo 2026-11-09 klo 16:02 UTC.
+
+**Saman päivän UI-kierros (v2):** paneelit uusittiin mittaristomaisiksi (ks. DECISIONS.md). Luvut eivät muuttuneet.
+
+![UI v2, jäinen kamera auki](docs/progress/2026-11-09/ui-v2-desktop-jaa.png)
+
+<img src="docs/progress/2026-11-09/ui-v2-mobiili-ei-mittausta.png" width="300" alt="UI v2, mobiili, kamera ilman mittausta">
+

@@ -3,9 +3,12 @@
   python tools/screenshot.py <url> <kansio>
 
 Ottaa kaksi kuvaa: kartta-desktop.png (1600×1000 @2x) ja kartta-mobiili.png (390×844 @3x).
+Valinnaisesti: JS-komento ajetaan ennen kuvaa (esim. paneelin avaus) ja tiedostonimen etuliite.
 Käyttää Chromea ilman ikkunaa ja odottaa, että kartta ja karttaruudut ovat latautuneet.
 Tarvitsee: pip install -r requirements-dev.txt
 """
+from __future__ import annotations
+
 import base64
 import json
 import subprocess
@@ -41,7 +44,7 @@ class CDP:
                 return msg.get("result", {})
 
 
-def main(url: str, out_dir: Path) -> None:
+def main(url: str, out_dir: Path, setup_js: str | None = None, prefix: str = "") -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     profile = tempfile.mkdtemp()
     proc = subprocess.Popen([CHROME, "--headless=new", f"--remote-debugging-port={PORT}",
@@ -58,6 +61,10 @@ def main(url: str, out_dir: Path) -> None:
                 time.sleep(0.2)
         cdp = CDP(ws_url)
         cdp("Page.enable")
+        # Kerää sivun JS-virheet, jotta rikkinäinen sivu ei mene kuvana läpi huomaamatta.
+        cdp("Page.addScriptToEvaluateOnNewDocument", source=(
+            "window.__errors=[];addEventListener('error',e=>__errors.push(e.message));"
+            "addEventListener('unhandledrejection',e=>__errors.push(String(e.reason)));"))
         for name, (w, h, scale, mobile) in VIEWS.items():
             cdp("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=scale, mobile=mobile)
             cdp("Page.navigate", url=url)
@@ -70,13 +77,21 @@ def main(url: str, out_dir: Path) -> None:
                 if r.get("result", {}).get("value"):
                     ready = True
                     break
-            time.sleep(1.5)  # viimeiset häivytykset
+            if setup_js:
+                cdp("Runtime.evaluate", expression=setup_js)
+            time.sleep(1.5)  # viimeiset häivytykset ja paneelin liuku
             shot = cdp("Page.captureScreenshot", format="png")
-            (out_dir / name).write_bytes(base64.b64decode(shot["data"]))
-            print(f"{name}: {'ok' if ready else 'AIKAKATKAISU (kuva voi olla keskeneräinen)'}")
+            errors = cdp("Runtime.evaluate", returnByValue=True,
+                         expression="(window.__errors||[]).join(' | ')").get("result", {}).get("value")
+            (out_dir / (prefix + name)).write_bytes(base64.b64decode(shot["data"]))
+            print(f"{prefix}{name}: {'ok' if ready else 'AIKAKATKAISU (kuva voi olla keskeneräinen)'}"
+                  + (f" · JS-virheet: {errors}" if errors else ""))
     finally:
         proc.terminate()
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], Path(sys.argv[2]))
+    # valinnaiset: 3. argumentti = JS ajettavaksi ennen kuvaa, 4. = tiedostonimen etuliite
+    main(sys.argv[1], Path(sys.argv[2]),
+         sys.argv[3] if len(sys.argv) > 3 else None,
+         sys.argv[4] if len(sys.argv) > 4 else "")
