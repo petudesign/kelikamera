@@ -4,6 +4,8 @@ Yksi ajo = yksi tar-tiedosto, jossa:
   images/<presetId>.jpg   kelikameran kuva pienennettynä (leveys IMG_WIDTH)
   manifest.json           jokaisen kuvan metatiedot + lähimmän sääaseman id
   weather.json.gz         kaikkien tiesääasemien raaka-anturidata samalta hetkeltä
+  forecast_road.json.gz   Digitrafficin tiesääennuste tieosuuksille (0, 2, 4, 6, 12 h)
+  forecast_fmi.json.gz    Ilmatieteen laitoksen ennuste jokaiselle tiesääasemalle, 3 h välein 4 vrk
 
 Tiedosto tallentuu kansioon out/YYYY/MM/DD/. Jos ympäristössä on HF_TOKEN ja
 HF_REPO, tiedosto ladataan myös Hugging Face -datasettiin (yksityinen).
@@ -39,6 +41,12 @@ IMG_WIDTH = 640
 JPEG_QUALITY = 80
 MAX_IMAGE_AGE = timedelta(hours=2)   # vanhempi kuva = kamera jumissa, ei tallenneta
 META_MAX_AGE = timedelta(days=7)     # kameroiden metatiedot muuttuvat harvoin
+META_VERSION = 3                      # nosta, kun metatietoihin lisätään kenttiä
+FMI_WFS = "https://opendata.fmi.fi/wfs"
+FMI_QUERY = "fmi::forecast::edited::weather::scandinavia::point::multipointcoverage"
+FMI_PARAMS = ["Temperature", "DewPoint", "Humidity", "Precipitation1h", "TotalCloudCover", "WindSpeedMS"]
+FMI_HOURS = 96
+FMI_BATCH = 60                        # asemia per pyyntö (URL:n pituus)
 WORKERS = 8
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -73,7 +81,7 @@ def camera_meta(limit: int | None) -> list[dict]:
     if cache_file.exists():
         cached = json.loads(cache_file.read_text())
         age = datetime.now(timezone.utc) - parse_time(cached["fetched"])
-        if age < META_MAX_AGE:
+        if age < META_MAX_AGE and cached.get("v") == META_VERSION:
             cams = cached["cameras"]
             return cams[:limit] if limit else cams
 
@@ -92,11 +100,15 @@ def camera_meta(limit: int | None) -> list[dict]:
         return {
             "id": cid,
             "name": p.get("name"),
+            "names": p.get("names"),  # fi / sv / en, esim. "Tie 51 Inkoo" / "Road 51 Inkoo"
             "lat": lat,
             "lon": lon,
             "municipality": p.get("municipality"),
             "province": p.get("province"),
             "road": (p.get("roadAddress") or {}).get("roadNumber"),
+            # tieosoite: järjestys tien varrella (tiekohtainen näkymä)
+            "roadSection": (p.get("roadAddress") or {}).get("roadSection"),
+            "roadDistance": (p.get("roadAddress") or {}).get("distanceFromRoadSectionStart"),
             "nearestWeatherStationId": p.get("nearestWeatherStationId"),
             "presets": [
                 {
@@ -115,7 +127,7 @@ def camera_meta(limit: int | None) -> list[dict]:
     if not limit:  # välimuistiin vain täysi lista
         CACHE.mkdir(exist_ok=True)
         cache_file.write_text(json.dumps(
-            {"fetched": datetime.now(timezone.utc).isoformat(), "cameras": cams},
+            {"v": META_VERSION, "fetched": datetime.now(timezone.utc).isoformat(), "cameras": cams},
             ensure_ascii=False))
     return cams
 
@@ -126,6 +138,73 @@ def pick_preset(cam: dict) -> dict:
         if p.get("directionCode") == "9":
             return p
     return cam["presets"][0]
+
+
+# --------------------------------------------------------------- forecasts --
+def weather_stations() -> list[dict]:
+    """Tiesääasemien sijainnit (v2). Välimuisti 7 pv."""
+    f = CACHE / "weather_stations_v2.json"
+    if f.exists():
+        cached = json.loads(f.read_text())
+        if datetime.now(timezone.utc) - parse_time(cached["fetched"]) < META_MAX_AGE:
+            return cached["stations"]
+    st = [{"id": x["id"], "lon": round(x["geometry"]["coordinates"][0], 4),
+           "lat": round(x["geometry"]["coordinates"][1], 4)}
+          for x in get_json("/api/weather/v2/stations")["features"]]
+    CACHE.mkdir(exist_ok=True)
+    f.write_text(json.dumps({"fetched": datetime.now(timezone.utc).isoformat(), "stations": st}))
+    return st
+
+
+def fetch_road_forecast() -> dict:
+    """Digitrafficin tiesääennuste kaikille tieosuuksille (sellaisenaan)."""
+    data = get_json("/api/weather/v2/forecast-sections/forecasts")
+    data["summary"] = {"sections": len(data.get("forecastSections", []))}
+    return data
+
+
+def fetch_fmi_forecast() -> dict:
+    """Ilmatieteen laitoksen muokattu ennuste jokaisen tiesääaseman kohdalle.
+
+    Tiivis muoto: params × times × stations. values[i][j] = asema i, aika j, arvot FMI_PARAMS-järjestyksessä.
+    """
+    import re
+    stations = weather_stations()
+    end = (datetime.now(timezone.utc) + timedelta(hours=FMI_HOURS)).strftime("%Y-%m-%dT%H:00:00Z")
+    out = {"source": "Ilmatieteen laitos, avoin data, CC BY 4.0", "query": FMI_QUERY,
+           "params": FMI_PARAMS, "fetched": datetime.now(timezone.utc).isoformat(),
+           "stations": [], "times": None, "values": []}
+    for i in range(0, len(stations), FMI_BATCH):
+        batch = stations[i:i + FMI_BATCH]
+        q = [("service", "WFS"), ("version", "2.0.0"), ("request", "getFeature"),
+             ("storedquery_id", FMI_QUERY), ("parameters", ",".join(FMI_PARAMS)),
+             ("timestep", "180"), ("endtime", end)] + [("latlon", f"{s['lat']},{s['lon']}") for s in batch]
+        r = requests.get(FMI_WFS, params=q, timeout=60)
+        r.raise_for_status()
+        xml = r.text
+        pos = re.search(r"<gmlcov:positions>(.*?)</gmlcov:positions>", xml, re.S)
+        val = re.search(r"<gml:doubleOrNilReasonTupleList>(.*?)</gml:doubleOrNilReasonTupleList>", xml, re.S)
+        if not (pos and val):
+            raise RuntimeError(f"tyhjä vastaus erälle {i}")
+        p, v = pos.group(1).split(), val.group(1).split()
+        rows = [(float(p[k]), float(p[k + 1]), int(p[k + 2])) for k in range(0, len(p), 3)]
+        n = len(FMI_PARAMS)
+        series: dict[tuple, list] = {}
+        for idx, (la, lo, t) in enumerate(rows):
+            vals = [None if x == "NaN" else float(x) for x in v[idx * n:(idx + 1) * n]]
+            series.setdefault((round(la, 2), round(lo, 2)), []).append((t, vals))
+        for s in batch:
+            pts = series.get((round(s["lat"], 2), round(s["lon"], 2)))
+            if not pts:
+                continue
+            pts.sort()
+            if out["times"] is None:
+                out["times"] = [t for t, _ in pts]
+            out["stations"].append(s["id"])
+            out["values"].append([vals for _, vals in pts])
+        time.sleep(0.5)  # kohteliaisuustauko FMI:lle
+    out["summary"] = {"stations": len(out["stations"]), "times": len(out["times"] or [])}
+    return out
 
 
 # ------------------------------------------------------------------ images --
@@ -158,7 +237,15 @@ def run(limit: int | None) -> Path:
         for s in get_json("/api/weathercam/v1/stations/data")["stations"]
         for p in s.get("presets", [])
     }
-    weather_raw = get_json("/api/weather/v1/stations/data")
+    # v1 poistuu 2027-04-13, joten käytetään v2:ta (sama rakenne)
+    weather_raw = get_json("/api/weather/v2/stations/data")
+    forecasts, forecast_errors = {}, []
+    for name, fn in (("road", fetch_road_forecast), ("fmi", fetch_fmi_forecast)):
+        try:
+            forecasts[name] = fn()
+        except Exception as e:  # ennusteen puute ei saa kaataa kuvien keruuta
+            forecast_errors.append(f"{name}: {e}")
+            print(f"  ! ennuste {name}: {e}", file=sys.stderr)
 
     chosen = []
     skipped = {"stale": 0, "no_time": 0, "failed": 0}
@@ -212,11 +299,16 @@ def run(limit: int | None) -> Path:
             "imageWidth": IMG_WIDTH,
             "images": len(manifest),
             "skipped": skipped,
+            "forecasts": {k: v.get("summary") for k, v in forecasts.items()},
+            "forecastErrors": forecast_errors,
             "source": "Fintraffic / digitraffic.fi, CC BY 4.0",
             "items": manifest,
         }
         add("manifest.json", json.dumps(meta, ensure_ascii=False, indent=1).encode())
         add("weather.json.gz", gzip.compress(json.dumps(weather_raw).encode()))
+        for name, data in forecasts.items():
+            add(f"forecast_{name}.json.gz",
+                gzip.compress(json.dumps(data, separators=(",", ":")).encode()))
 
     day_dir = OUT / started.strftime("%Y/%m/%d")
     day_dir.mkdir(parents=True, exist_ok=True)
@@ -225,6 +317,7 @@ def run(limit: int | None) -> Path:
 
     secs = (datetime.now(timezone.utc) - started).total_seconds()
     print(f"  kuvia: {len(manifest)}, ohitettu: {skipped}")
+    print(f"  ennusteet: {meta['forecasts']}" + (f", virheet: {forecast_errors}" if forecast_errors else ""))
     print(f"  tiedosto: {path.relative_to(ROOT)} ({path.stat().st_size / 1e6:.1f} Mt), {secs:.0f} s")
     return path
 
