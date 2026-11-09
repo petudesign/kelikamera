@@ -4,7 +4,7 @@ Tavoite: arvioida tien pinnan tila ja kitka Fintraffic-kelikameroiden kuvista. O
 automaattisesti, kun jokainen kuva yhdistetään lähimmän tiesääaseman anturimittaukseen samalta hetkeltä.
 
 Vaihe nyt: **datan keruu talvelta 2026–27.** Päätökset ja niiden perustelut: [DECISIONS.md](DECISIONS.md).
-Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md).
+Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md). Sovitut ominaisuudet: [ROADMAP.md](ROADMAP.md).
 
 ## Rakenne
 

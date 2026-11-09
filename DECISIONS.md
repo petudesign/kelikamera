@@ -191,6 +191,24 @@ olisi harhaanjohtava, koska sen saisi myös arvaamalla.
 Siksi työkalu ohjaa Chromea DevTools-protokollalla ja odottaa, kunnes `map.areTilesLoaded()` on tosi.
 Lisäriippuvuus `websocket-client` on vain `requirements-dev.txt`:ssä, joten keräin ei tarvitse sitä.
 
+## 2026-11-09 · Sovitut ominaisuudet ja 3 päivän arvio
+
+**Päätös:** Tiekarttaan ([ROADMAP.md](ROADMAP.md)) otetaan viralliset ajokelivaroitukset, "Liukastumassa"-lista,
+tiekohtainen näkymä, aikajana, tien seuraaminen ja 3 päivän liukkausriski.
+
+**3 päivän arvio, selvitys:** Ilmatieteen laitoksen avoin data (opendata.fmi.fi, CC BY 4.0) sisältää
+pistemäiset ennusteet ECMWF-mallista ja ilmatieteilijöiden muokatun ennusteen. Molemmat ulottuvat yli neljän päivän
+päähän (tarkistettu Rovaniemelle 2026-11-09). Digitraffic tarjoaa lisäksi valmiin tiesääennusteen tieosuuksille
+(0–12 h), joka toimii vertailukohtana lyhyelle aikavälille.
+
+**Miten:** Ennustemalli oppii yhteyden "mitä sääennuste sanoi" → "mikä tien pinnan tila oikeasti oli" (antureista
+ja myöhemmin kamerakuvista). **Tämä vaatii, että ennusteet arkistoidaan nyt.** Jälkikäteen ei saa tietää, mitä
+ennuste sanoi aikanaan, vaan ainoastaan mitä tapahtui. Siksi ennusteiden arkistointi on tiekartassa ensimmäisenä.
+
+**Rajaus:** 3 päivän arvio esitetään **riskitasona** (esim. "liukkausriski huomenna yöllä: korkea"), ei tarkkana
+keliluokkana, koska tarkkuus heikkenee ennustepituuden kasvaessa. Mallin pitää voittaa yksinkertainen vertailukohta
+("pakkasta ja sadetta ennustettu → riski") ja lyhyellä aikavälillä Digitrafficin oma ennuste. Muuten sitä ei julkaista.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
