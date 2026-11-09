@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kelikamera · Suomen tiet nyt</title>
+<meta name="description" content="Tien pinnan tila Fintraffiicin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1116; --panel:#151a21; --panel2:#1b212a; --line:#262e3a; --txt:#e8edf3; --dim:#8b97a7;
+  --kuiva:#3ecf8e; --kostea:#7cc4ff; --marka:#3b82f6; --luminen:#e9ecf5; --jaa:#ff4d6d; --none:#4a5463;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--txt);font:14px/1.45 Inter,system-ui,sans-serif}
+#map{position:fixed;inset:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+/* top bar */
+.top{position:fixed;left:16px;top:16px;z-index:5;max-width:min(420px,calc(100% - 32px));background:rgba(21,26,33,.92);
+  border:1px solid var(--line);border-radius:12px;padding:14px 16px;backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:18px;letter-spacing:-.01em}
+.brand span{color:var(--dim);font-size:12px}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;
+  background:var(--panel2);font-size:12px;cursor:pointer;color:var(--txt);font-family:inherit;user-select:none}
+.chip i{width:9px;height:9px;border-radius:50%}
+.chip b{font-weight:600;color:var(--dim)}
+.chip.off{opacity:.35}
+.note{margin-top:10px;font-size:12px;color:var(--dim)}
+.note em{color:var(--txt);font-style:normal}
+
+/* side panel */
+.panel{position:fixed;right:16px;top:16px;bottom:16px;width:380px;z-index:6;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;overflow:auto;transform:translateX(calc(100% + 32px));
+  transition:transform .25s ease}
+.panel.on{transform:none}
+.close{position:absolute;right:10px;top:10px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;
+  background:rgba(0,0,0,.55);color:#fff;font-size:16px;cursor:pointer}
+.shot{position:relative;aspect-ratio:16/9;background:#000}
+.shot img{width:100%;height:100%;object-fit:cover;display:block}
+.shot small{position:absolute;left:8px;bottom:8px;font-size:11px;background:rgba(0,0,0,.6);padding:3px 7px;border-radius:4px}
+.body{padding:16px}
+.body h2{font-size:17px;line-height:1.25}
+.sub{color:var(--dim);font-size:12px;margin-top:2px}
+.state{display:flex;align-items:center;gap:10px;margin:16px 0 4px}
+.state .dot{width:14px;height:14px;border-radius:50%}
+.state b{font-size:22px;letter-spacing:-.01em}
+.state span{color:var(--dim);font-size:12px}
+.why{background:var(--panel2);border:1px dashed var(--line);border-radius:10px;padding:12px;margin-top:14px;font-size:13px;color:var(--dim)}
+.why b{color:var(--txt);display:block;margin-bottom:2px}
+.grip{margin-top:16px}
+.grip .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--dim)}
+.grip .lbl b{color:var(--txt);font-size:15px}
+.grip .bar{position:relative;height:8px;border-radius:4px;margin-top:6px;
+  background:linear-gradient(90deg,var(--jaa),#f5a524 40%,var(--kuiva))}
+.grip .bar i{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:#fff;transform:translateX(-50%);box-shadow:0 0 0 2px var(--panel)}
+.grip .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:4px}
+dl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+dt{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+dd{font-size:15px;margin-top:1px}
+.hist{margin-top:18px}
+.hist h3{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.strip{display:flex;gap:3px}
+.strip i{flex:1;height:18px;border-radius:3px}
+.strip-t{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:4px}
+.foot{position:fixed;left:16px;bottom:10px;z-index:4;font-size:11px;color:var(--dim)}
+.foot a{color:var(--dim)}
+.maplibregl-ctrl-attrib{display:none}
+.maplibregl-popup-content{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:12px Inter,sans-serif}
+.maplibregl-popup-tip{display:none}
+
+@media (max-width:720px){
+  .top{left:12px;right:12px;top:12px;max-width:none;padding:12px}
+  .legend{gap:5px}
+  .note{display:none}
+  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:78vh;border-radius:16px 16px 0 0;transform:translateY(105%)}
+  .panel.on{transform:none}
+  .foot{display:none}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="top">
+  <div class="brand"><h1>Kelikamera</h1><span id="updated">Ladataan…</span></div>
+  <div class="legend" id="legend"></div>
+  <p class="note"><em>Harmaat pisteet</em> ovat kameroita, joiden lähellä ei ole kelianturia. Niihin tulee tekoälyn arvio kuvasta.</p>
+</div>
+
+<aside class="panel" id="panel" aria-live="polite"></aside>
+
+<div class="foot">Data: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, CC BY 4.0 · Kartta: © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const COLORS={"kuiva":"#3ecf8e","kostea":"#7cc4ff","märkä":"#3b82f6","luminen":"#e9ecf5","jää/kuura":"#ff4d6d","ei mittausta":"#4a5463"};
+const LABEL={"kuiva":"Kuiva","kostea":"Kostea","märkä":"Märkä","luminen":"Luminen / sohjo","jää/kuura":"Jää / kuura","ei mittausta":"Ei mittausta"};
+const ORDER=["jää/kuura","luminen","märkä","kostea","kuiva","ei mittausta"];
+const hidden=new Set();
+let DATA, byId={};
+
+const fmtTime=s=>new Date(s).toLocaleString("fi-FI",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"});
+const num=(v,u,d=1)=>v==null?"–":`${v.toLocaleString("fi-FI",{minimumFractionDigits:d,maximumFractionDigits:d})}${u}`;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/dark",
+  center:[25.5,64.6],zoom:4.6,minZoom:3.5,maxZoom:14,attributionControl:false});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
+
+fetch("data/latest.json").then(r=>r.json()).then(d=>{
+  DATA=d; d.cameras.forEach(c=>byId[c.id]=c);
+  document.getElementById("updated").textContent="Päivitetty "+fmtTime(d.run);
+  buildLegend();
+  const ready=()=>addLayer();
+  map.loaded()?ready():map.on("load",ready);
+});
+
+function buildLegend(){
+  const el=document.getElementById("legend");
+  el.innerHTML=ORDER.map(k=>`<button class="chip" data-k="${k}"><i style="background:${COLORS[k]}"></i>${LABEL[k]} <b>${DATA.counts[k]??0}</b></button>`).join("");
+  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k; hidden.has(k)?hidden.delete(k):hidden.add(k); b.classList.toggle("off",hidden.has(k)); applyFilter();
+  });
+}
+
+function geojson(){
+  return {type:"FeatureCollection",features:DATA.cameras.map(c=>({type:"Feature",
+    geometry:{type:"Point",coordinates:[c.lon,c.lat]},
+    properties:{id:c.id,k:c.cls||"ei mittausta",name:c.name,rank:ORDER.length-ORDER.indexOf(c.cls||"ei mittausta")}}))};
+}
+
+function addLayer(){
+  map.addSource("cams",{type:"geojson",data:geojson()});
+  map.addLayer({id:"cams-halo",type:"circle",source:"cams",filter:["==",["get","k"],"jää/kuura"],
+    paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,9,10,18],"circle-color":COLORS["jää/kuura"],"circle-opacity":.25,"circle-blur":.6}});
+  map.addLayer({id:"cams",type:"circle",source:"cams",layout:{"circle-sort-key":["get","rank"]},
+    paint:{
+      "circle-radius":["interpolate",["linear"],["zoom"],4,["case",["==",["get","k"],"ei mittausta"],2.2,3.6],10,["case",["==",["get","k"],"ei mittausta"],5,8]],
+      "circle-color":["match",["get","k"],...Object.entries(COLORS).flat(),"#888"],
+      "circle-stroke-width":["case",["==",["get","k"],"ei mittausta"],0,1],
+      "circle-stroke-color":"#0e1116"}});
+  map.addLayer({id:"cams-sel",type:"circle",source:"cams",filter:["==",["get","id"],""],
+    paint:{"circle-radius":12,"circle-color":"transparent","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
+
+  const tip=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
+  map.on("mouseenter","cams",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;
+    tip.setLngLat(e.lngLat).setHTML(`${esc(p.name)} · ${LABEL[p.k]}`).addTo(map)});
+  map.on("mouseleave","cams",()=>{map.getCanvas().style.cursor="";tip.remove()});
+  map.on("click","cams",e=>open(e.features[0].properties.id));
+  map.on("click",e=>{if(!map.queryRenderedFeatures(e.point,{layers:["cams"]}).length)close()});
+}
+
+function applyFilter(){
+  const f=hidden.size?["!",["in",["get","k"],["literal",[...hidden]]]]:null;
+  map.setFilter("cams",f);
+}
+
+function open(id){
+  const c=byId[id]; if(!c) return;
+  map.setFilter("cams-sel",["==",["get","id"],id]);
+  const k=c.cls||"ei mittausta";
+  const fr=c.friction;
+  const pos=fr==null?null:Math.max(0,Math.min(100,fr/0.82*100));
+  const hist=c.hist||[];
+  document.getElementById("panel").innerHTML=`
+    <button class="close" aria-label="Sulje" onclick="close()">✕</button>
+    <div class="shot"><img src="${c.img}?t=${Date.now()}" alt="Kelikamerakuva: ${esc(c.name)}"><small>Kuva nyt · Fintraffic${c.view?" · "+esc(c.view):""}</small></div>
+    <div class="body">
+      <h2>${esc(c.name)}</h2>
+      <div class="sub">${c.road?"Tie "+c.road+" · ":""}${esc(c.mun||"")}</div>
+      <div class="state"><i class="dot" style="background:${COLORS[k]}"></i><b>${LABEL[k]}</b>
+        ${c.cls?`<span>mitattu ${fmtTime(c.t)}</span>`:""}</div>
+      ${c.cls?`
+        <div class="sub">Asema ${c.st}, ${num(c.km," km")} kamerasta</div>
+        <div class="grip"><div class="lbl"><span>Kitka (µ)</span><b class="mono">${num(fr,"",2)}</b></div>
+          <div class="bar">${pos!=null?`<i style="left:${pos}%"></i>`:""}</div>
+          <div class="ticks"><span>jää ~0,1</span><span>kuiva 0,82</span></div></div>
+        <dl>
+          <div><dt>Tie</dt><dd class="mono">${num(c.roadT," °C")}</dd></div>
+          <div><dt>Ilma</dt><dd class="mono">${num(c.airT," °C")}</dd></div>
+          <div><dt>Vesi</dt><dd class="mono">${num(c.water," mm",2)}</dd></div>
+          <div><dt>Lumi / jää</dt><dd class="mono">${num(c.snow,"",2)} / ${num(c.ice," mm",2)}</dd></div>
+        </dl>`
+      :`<div class="why"><b>Ei mitattua keliä</b>${c.why==="asema yli 5 km päässä"
+          ?`Lähin tiesääasema on ${num(c.km," km")} päässä, joten sen mittaus ei kerro tämän kameran kelistä.`
+          :"Lähimmällä tiesääasemalla ei ole tienpinnan kelianturia."}
+          Tähän tulee tekoälyn arvio kamerakuvasta.</div>`}
+      ${hist.length>1?`<div class="hist"><h3>Viimeiset ${hist.length} mittausta</h3>
+        <div class="strip">${hist.map(h=>`<i title="${fmtTime(h.t)}: ${LABEL[h.c||"ei mittausta"]}" style="background:${COLORS[h.c||"ei mittausta"]}"></i>`).join("")}</div>
+        <div class="strip-t"><span>${fmtTime(hist[0].t)}</span><span>${fmtTime(hist.at(-1).t)}</span></div></div>`:""}
+    </div>`;
+  document.getElementById("panel").classList.add("on");
+}
+function close(){document.getElementById("panel").classList.remove("on");map.setFilter("cams-sel",["==",["get","id"],""])}
+addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+</script>
+</body>
+</html>

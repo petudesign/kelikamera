@@ -147,6 +147,25 @@ Odotetusti talviluokat puuttuvat vielä.
   todennäköisesti vääriä tunnisteita (eri tie, eri keli). Etäisyysraja (alustavasti esim. 5 km) päätetään,
   kun nähdään, paljonko se karsii talviluokkia.
 
+## 2026-11-09 · Karttasivun ensimmäinen versio
+
+**Päätös:** Staattinen sivu `site/` (MapLibre + OpenFreeMapin tumma tyyli), dataa tuottaa
+`collector/build_site.py` → `site/data/latest.json`. Tehtiin heti anturidatalla, ei odotettu mallia.
+
+**Miksi nyt:** Sivu näyttää jo nyt projektin idean. Värilliset pisteet ovat mitattua keliä, ja harmaat ovat
+kameroita, joihin tekoäly tuo arvion. Ensimmäisessä ajossa 323 mitattua ja 474 harmaata.
+
+**Valinnat:**
+- **Etäisyysraja 5 km** kartalla: kauempana olevan aseman mittausta ei näytetä kameran kelinä. Sama raja on
+  alustavasti tarkoitus käyttää opetusdatassa.
+- **Kuvaa ei kopioida sivulle**, vaan näytetään Fintraffiicin tuore kuva suoraan heidän osoitteestaan.
+  Arkistomme pysyy yksityisenä (ks. tietosuojamerkintä).
+- **OpenFreeMap** taustakartaksi: ilmainen ilman avainta, myös kaupalliseen käyttöön.
+- **Ei palvelinta.** Tarkoitus on, että sama Actions-ajo rakentaa datan ja julkaisee sivun GitHub Pagesiin.
+  Julkaisua ei ole vielä tehty.
+
+**Jätettiin myöhemmäksi:** aikajana, tekoälyarviot, GitHub Pages -julkaisu, "Arvaa keli" -peli.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
