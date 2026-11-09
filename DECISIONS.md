@@ -93,6 +93,17 @@ jos tienpintakulmat eivät riitä.
 - **Yökuvat:** kamerat kuvaavat pimeällä infrapunalla mustavalkoisena. Vain 3/797 oli mustia (klo 18 Suomen aikaa).
   Malli joutuu oppimaan kaksi eri kuvatyyppiä (päivä värillinen, yö IR).
 
+## 2026-11-09 · Keruu käynnissä pilvessä
+
+- Repo: github.com/petudesign/kelikamera (julkinen). Datasetti: petudesign/kelikamera (yksityinen, Hugging Face).
+- GitHubin automaattisesti luoma README ja Node.js-.gitignore korvattiin projektin omilla. Historia säilytettiin
+  (rebase, ei pakotettua pushia).
+- `HF_REPO` oli aluksi `hf-petudesign/kelikamera`: ohjeen esimerkin etuliite tarttui mukaan. Korjattiin
+  muotoon `petudesign/kelikamera` ennen ensimmäistä ajoa.
+- Ensimmäinen ajo käsin 16:21 UTC: 797 kuvaa, 40,1 Mt, ladattu Hugging Faceen. Koko ajo kesti 2 min
+  (keruu 78 s, pilvessä hitaampi kuin paikallisesti 27 s). Datasetti ei näy kirjautumattomalle (HTTP 401).
+- Tästä eteenpäin ajastus 3 h välein.
+
 ## Avoimet kysymykset
 
 - **Mitä `TIENPINNAN_TILA_1`:n koodit tarkoittavat?** Rajapinta ei anna selitteitä. Havaitut arvot: 0, 1, 2, 3, 10, 11.
