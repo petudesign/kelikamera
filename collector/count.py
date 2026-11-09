@@ -41,14 +41,9 @@ def is_ir(jpeg: bytes) -> bool:
 
 
 def station_coords() -> dict[int, tuple[float, float]]:
-    f = CACHE / "weather_stations.json"
-    if not f.exists():
-        r = requests.get("https://tie.digitraffic.fi/api/weather/v1/stations",
-                         headers={"Digitraffic-User": "Kelikamera-AI/0.1"}, timeout=30)
-        r.raise_for_status()
-        CACHE.mkdir(exist_ok=True)
-        f.write_text(json.dumps({x["id"]: x["geometry"]["coordinates"][:2] for x in r.json()["features"]}))
-    return {int(k): tuple(v) for k, v in json.loads(f.read_text()).items()}
+    """{asema_id: (lon, lat)} – sama välimuisti kuin keräimellä (v2-rajapinta)."""
+    from collect import weather_stations
+    return {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
 
 
 def km(lat1, lon1, lat2, lon2) -> float:
