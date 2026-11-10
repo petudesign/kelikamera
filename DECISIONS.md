@@ -464,6 +464,36 @@ valitulta hetkeltä".
 **Vaatii oikean puhelimen** (ei näy selainemuloinnissa): kosketusalueen tuntuma, hover-jumit, napautusviive,
 pull-to-refresh, notch-välit ja pyyhkäisy. Koodista tarkistettu: 16 px kentät, dvh, meta-tagit, tyylisäännöt.
 
+## 2026-11-10 · GitHub pudotti ajastetut ajot, sivu päivittyy nyt tunnin välein
+
+**Löydös:** käyttäjä huomasi, että kartan mittaukset näyttivät klo 03.30, vaikka kamerakuva oli klo 10.20.
+Syyt:
+1. **GitHub käynnisti 3 h ajastuksen vain kerran yössä** (01:35 UTC). Ajot klo 18, 21, 00, 06 ja 09 UTC jäivät
+   tulematta. GitHub kertoo, että ajastettuja ajoja voidaan viivästää tai pudottaa ruuhkassa, ja uusilla repoilla
+   näin käy erityisen usein. Neljän keruuajon verran talvidataa jäi saamatta.
+2. **Sivun data tuli keruuajosta**, joten se oli yhtä vanha kuin viimeinen onnistunut ajo.
+3. **Bugi:** "Mitattu"-aika näytti keruuajon kamerakuvan ajan, ei anturin mittausaikaa.
+
+**Korjaus:**
+- **Ajastus joka tunti** (minuutilla 17). Keräin tarkistaa Hugging Facesta uusimman ajon ajan ja **kerää kuvat vain,
+  jos edellisestä on yli 2,5 h** (`--if-due 2.5`). Tavoitetiheys ja datamäärä pysyvät samoina (~3 h, ~40 Mt/ajo),
+  mutta pudotettu ajo paikkautuu seuraavalla tunnilla.
+- **Sivun data suoraan Digitrafficista** jokaisessa ajossa (kamerarajapinta + sääasemat v2), ei keruuajon tar-tiedostosta.
+  Sivu päivittyy siis tunnin välein, vaikka kuvia ei kerättäisi.
+- **"Mitattu" = anturin oma mittausaika** (`mt` = optisen kelianturin `measuredTime`).
+- Pages-julkaisupaketin säilytys on oletuksena 1 päivä, joten tunnin julkaisut eivät kerrytä tallennustilaa.
+
+**Toinen löydös: kamerat kuvaavat usein vain kerran tunnissa** (esim. Inkoo: kuva 10.18, anturi 11.08). Tunnisteiden
+30 min sääntö (kuva ↔ anturi) hylkäsi aamulla 449/815 kuvaa. Tämä on oikein opetusdatalle, koska vanha kuva ja tuore
+mittaus eivät välttämättä kuvaa samaa keliä, mutta karttaan sääntö ei sovi. **Kartta käyttää nyt tuorein anturilukemaa,
+jos se on alle 90 min vanha**, riippumatta kuvan ajasta.
+- *Avoin kysymys opetusdatalle:* kuinka suuri osa keruuajojen kuvista jää 30 min säännön ulkopuolelle eri vuorokaudenaikoina?
+  Vaihtoehdot: käytetään anturin historiaa (5 min välein) ja otetaan kuvan ottohetkeä lähin mittaus nykyhetken sijaan.
+  Tämä on todennäköisesti oikea korjaus, ja se tehdään ennen koulutusta.
+
+**Jätettiin varalle:** ulkoinen ajastin (esim. cron-job.org käynnistämässä `workflow_dispatch`-ajon). Se vaatisi
+käyttäjältä tunnuksen ja GitHub-tokenin. Otetaan käyttöön, jos tunnin ajastuskin osoittautuu epäluotettavaksi.
+
 ## Avoimet kysymykset
 
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.

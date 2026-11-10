@@ -322,6 +322,30 @@ def run(limit: int | None) -> Path:
     return path
 
 
+def last_collected() -> datetime | None:
+    """Uusimman Hugging Faceen ladatun ajon aika (tämä ja edellinen päivä). None = ei tiedossa."""
+    token, repo = os.environ.get("HF_TOKEN"), os.environ.get("HF_REPO")
+    if not (token and repo):
+        return None
+    from huggingface_hub import HfApi
+    api, now, stamps = HfApi(token=token), datetime.now(timezone.utc), []
+    for day in (now, now - timedelta(days=1)):
+        try:
+            for f in api.list_repo_tree(repo, path_in_repo=day.strftime("data/%Y/%m/%d"), repo_type="dataset"):
+                name = f.path.rsplit("/", 1)[-1]
+                if name.endswith(".tar"):
+                    stamps.append(datetime.strptime(name[:-4], "%Y%m%dT%H%MZ").replace(tzinfo=timezone.utc))
+        except Exception:  # päivän kansiota ei vielä ole
+            pass
+    return max(stamps) if stamps else None
+
+
+def set_output(key: str, value: str) -> None:
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"{key}={value}\n")
+
+
 def upload(path: Path) -> None:
     token, repo = os.environ.get("HF_TOKEN"), os.environ.get("HF_REPO")
     if not (token and repo):
@@ -343,5 +367,15 @@ def upload(path: Path) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="vain N ensimmäistä kameraa (testi)")
+    ap.add_argument("--if-due", type=float, metavar="H",
+                    help="kerää vain, jos edellisestä keruusta on yli H tuntia (ajastus käynnistyy tunnin välein)")
     args = ap.parse_args()
+    if args.if_due:
+        last = last_collected()
+        if last and datetime.now(timezone.utc) - last < timedelta(hours=args.if_due):
+            print(f"Edellinen keruu {last:%H:%M} UTC, alle {args.if_due} h sitten – ei kerätä nyt.")
+            set_output("collected", "false")
+            raise SystemExit(0)
+        print(f"Keruu on ajankohtainen (edellinen: {last:%Y-%m-%d %H:%M} UTC)." if last else "Edellistä keruuta ei löytynyt – kerätään.")
     upload(run(args.limit))
+    set_output("collected", "true")

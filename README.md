@@ -1,6 +1,6 @@
 # Kelikamera AI
 
-**Sivu:** https://petudesign.github.io/kelikamera/ (päivittyy 3 h välein)
+**Sivu:** https://petudesign.github.io/kelikamera/ (päivittyy tunnin välein, kuvat kerätään ~3 h välein)
 
 Tavoite: arvioida tien pinnan tila ja kitka Fintraffic-kelikameroiden kuvista. Opetusdata syntyy
 automaattisesti, kun jokainen kuva yhdistetään lähimmän tiesääaseman anturimittaukseen samalta hetkeltä.
@@ -18,7 +18,7 @@ collector/build_site.py karttasivun data → site/data/ (nykytila, 24 h historia
 site/                  karttasivu (staattinen, MapLibre, suomi/englanti)
 tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
-.github/workflows/     ajastus GitHub Actionsissa (3 h välein)
+.github/workflows/     ajastus GitHub Actionsissa (tunnin välein; keruu jos edellisestä > 2,5 h)
 ```
 
 ## Paikallinen ajo

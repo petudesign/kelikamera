@@ -806,7 +806,7 @@ function openCam(id,keep){
   const k=clsAt(c), col=COLORS[k], L=T(), past=slot!==24;
   const fr=past?(c.hf?c.hf[slot]:null):c.friction;
   const sub=k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
-    :`${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:c.t)}</span> · ${L.station} ${c.st} · <span class="num">${num(c.km," km")}</span>`;
+    :`${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span> · ${L.station} ${c.st} · <span class="num">${num(c.km," km")}</span>`;
   const p=document.getElementById("panel");
   p.setAttribute("aria-label",nameOf(c));
   p.innerHTML=`<div class="scroll">

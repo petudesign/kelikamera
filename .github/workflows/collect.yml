@@ -2,7 +2,9 @@ name: Keruu
 
 on:
   schedule:
-    - cron: "17 */3 * * *"   # 3 h välein, minuutilla 17 (tasatunnit ovat GitHubissa ruuhkaisia)
+    # Joka tunti: sivu päivittyy tunnin välein, ja kuvat kerätään, kun edellisestä keruusta on yli 2,5 h.
+    # GitHub pudottaa ajastettuja ajoja ruuhkassa, joten tiheämpi ajastus paikkaa aukot.
+    - cron: "17 * * * *"      # minuutilla 17 (tasatunnit ovat GitHubissa ruuhkaisia)
   workflow_dispatch:          # käsin käynnistys Actions-välilehdeltä
 
 permissions:
@@ -35,13 +37,14 @@ jobs:
           key: cameras-${{ github.run_id }}
           restore-keys: cameras-
 
-      - name: Kerää ja lataa Hugging Faceen
-        run: python collector/collect.py
+      - name: Kerää ja lataa Hugging Faceen (jos on aika)
+        id: collect
+        run: python collector/collect.py --if-due 2.5
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_REPO: ${{ vars.HF_REPO }}
 
-      # Sivun data juuri kerätystä ajosta + Digitrafficin 24 h historia + Ilmatieteen laitoksen varoitukset.
+      # Sivun data suoraan Digitrafficista (nykytila + 24 h historia) + Ilmatieteen laitoksen varoitukset.
       # Jos tämä epäonnistuu, keruu on jo tallessa; sivu jää edelliseen versioon.
       - name: Rakenna karttasivun data
         id: site

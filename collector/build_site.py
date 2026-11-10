@@ -2,7 +2,8 @@
 
   python collector/build_site.py
 
-- Kamerat ja nykyhetken keli: uusin keruuajo (out/) + kameroiden metatiedot (cache/cameras.json).
+- Kamerat ja nykyhetken keli: suoraan Digitrafficista rakennushetkellä (kamerarajapinta + sääasemat v2),
+  kameroiden metatiedot välimuistista (cache/cameras.json). Ei riipu kuvien keruusta.
 - 24 h historia tunneittain: Digitrafficin asemakohtainen historia (v2, max 24 h) lähimmille
   asemille, joilla on optinen kelianturi. Ei riipu omasta arkistosta, joten aikajana toimii heti.
 - Liikennesäävaroitukset: Ilmatieteen laitoksen CAP-syöte (fi + sv + en) sellaisenaan, alueet yksinkertaistettuina.
@@ -23,7 +24,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
-from collect import camera_meta, get_json, weather_stations  # noqa: E402
+from collect import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
 from count import km  # noqa: E402
 from labels import CLASS_OF_CODE, CLASSES, label, station_index  # noqa: E402
 
@@ -32,6 +33,7 @@ OUT = ROOT / "out"
 SITE_DATA = ROOT / "site" / "data"
 MAX_KM = 5.0       # kauempana oleva asema ei kerro tämän kameran kelistä
 HOURS = 24
+SENSOR_MAX_AGE = timedelta(minutes=90)  # vanhempi anturilukema ei kerro nykytilasta
 SENSOR_CLASS = "OPTISEN_ANTURIN_KELI1"
 SENSOR_FRICTION = "KITKA1_LUKU"
 CAP_FEED = "https://alerts.fmi.fi/cap/feed/atom_fi-FI.xml"  # sisältää kaikki kielet
@@ -121,35 +123,44 @@ def traffic_warnings() -> list[dict]:
                     ring = [[round(x, 3), round(y, 3)] for x, y in simplify(pts)]
                     if len(ring) >= 4:
                         w["polygons"].append(ring)
-        if w["headline"] and w["polygons"] and t(w["expires"]) > now:
+        if w["headline"] and w["polygons"] and w.get("expires") and t(w["expires"]) > now:
             out.append(w)
     return out
 
 
 # --------------------------------------------------------------------- main --
 def main() -> None:
-    tars = sorted({p.name: p for p in OUT.glob("**/*.tar")}.values())
-    latest = None
-    for p in reversed(tars):
-        tf = tarfile.open(p)
-        meta = json.load(tf.extractfile("manifest.json"))
-        if meta["images"] >= 100:  # pikatestit pois
-            latest = (meta, station_index(json.loads(gzip.decompress(tf.extractfile("weather.json.gz").read()))))
-            break
-    if not latest:
-        raise SystemExit("Ei keruuajoja kansiossa out/")
-    meta, stations = latest
+    # Nykytila suoraan Digitrafficista, ei keruuajosta: sivu voi päivittyä useammin kuin kuvia kerätään.
+    started = datetime.now(timezone.utc)
     cam_meta = {c["id"]: c for c in camera_meta(None)}
     coords = {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
+    measured = {p["id"]: p.get("measuredTime")
+                for st in get_json("/api/weathercam/v1/stations/data")["stations"] for p in st.get("presets", [])}
+    stations = station_index(get_json("/api/weather/v2/stations/data"))
+    items = []
+    for cam in cam_meta.values():
+        pr = pick_preset(cam)
+        mt = measured.get(pr["id"])
+        if not mt or started - t(mt) > timedelta(hours=2):  # kamera jumissa
+            continue
+        items.append({"camera": cam["id"], "cameraName": cam.get("name"), "lat": cam["lat"], "lon": cam["lon"],
+                      "road": cam.get("road"), "municipality": cam.get("municipality"),
+                      "weatherStation": cam.get("nearestWeatherStationId"),
+                      "preset": pr["id"], "presetName": pr.get("name"), "measuredTime": mt})
 
-    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    now = started.replace(minute=0, second=0, microsecond=0)
     slots = [now - timedelta(hours=HOURS - k) for k in range(HOURS + 1)]
 
     cams, need = [], set()
-    for item in meta["items"]:
+    for item in items:
         st = coords.get(item.get("weatherStation"))
         d = km(item["lat"], item["lon"], st[1], st[0]) if st else None
-        lab = label(item, stations)
+        # Kartalle tuorein anturilukema riippumatta kameran kuvaushetkestä (kamerat kuvaavat usein vain
+        # kerran tunnissa). Opetusdatan 30 min sääntö koskee vain keruuta, ei karttaa.
+        lab = label({**item, "measuredTime": None}, stations)
+        opt = (stations.get(item.get("weatherStation")) or {}).get("OPTISEN_ANTURIN_KELI1") or {}
+        if lab["class"] and (not opt.get("time") or started - opt["time"] > SENSOR_MAX_AGE):
+            lab["class"], lab["reason"] = None, "anturilukema vanha"
         near = d is not None and d <= MAX_KM
         cls = lab["class"] if near else None
         m = cam_meta.get(item["camera"], {})
@@ -165,6 +176,9 @@ def main() -> None:
             "img": f"https://weathercam.digitraffic.fi/{item['preset']}.jpg",
             "view": item.get("presetName"),
             "t": item["measuredTime"],
+            # anturin oma mittausaika (optinen kelianturi), ei kamerakuvan aika
+            "mt": (lambda o: o["time"].isoformat() if o and o.get("time") else None)(
+                (stations.get(item.get("weatherStation")) or {}).get("OPTISEN_ANTURIN_KELI1")) if near else None,
             "cls": cls,
             "why": None if cls else ("far" if d and d > MAX_KM else "nosensor"),
             "st": item.get("weatherStation"), "km": round(d, 1) if d is not None else None,
@@ -193,7 +207,7 @@ def main() -> None:
 
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     (SITE_DATA / "latest.json").write_text(json.dumps({
-        "run": meta["startedAt"],
+        "run": started.isoformat(),
         "built": datetime.now(timezone.utc).isoformat(),
         "maxKm": MAX_KM,
         "classes": CLASSES,
