@@ -77,9 +77,12 @@ const fmtClock=s=>fmt(s,{hour:"2-digit",minute:"2-digit"});
 const num=(x,u="",d=1)=>x==null?"–":`${x.toLocaleString(T().locale,{minimumFractionDigits:d,maximumFractionDigits:d})}${u}`;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nameOf=c=>(c.names&&c.names[LANG])||c.name;
-const X='<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6"/></svg>';
-const PLAY='<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
-const PAUSE='<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor"/></svg>';
+// Lucide-ikonit (ISC-lisenssi, lucide.dev), upotettuna – ei ikonikirjastoa ajonaikana
+const ICON={gauge:'<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',thermo:'<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',thermoSun:'<path d="M12 2v2"/><path d="M12 8a4 4 0 0 0-1.645 7.647"/><path d="M2 12h2"/><path d="M20 14.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z"/><path d="m4.93 4.93 1.41 1.41"/><path d="m6.34 17.66-1.41 1.41"/>',droplet:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',cloudSnow:'<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M8 15h.01"/><path d="M8 19h.01"/><path d="M12 17h.01"/><path d="M12 21h.01"/><path d="M16 15h.01"/><path d="M16 19h.01"/>',snowflake:'<path d="m10 20-1.25-2.5L6 18"/><path d="M10 4 8.75 6.5 6 6"/><path d="m14 20 1.25-2.5L18 18"/><path d="m14 4 1.25 2.5L18 6"/><path d="m17 21-3-6h-4"/><path d="m17 3-3 6 1.5 3"/><path d="M2 12h6.5L10 9"/><path d="m20 10-1.5 2 1.5 2"/><path d="M22 12h-6.5L14 15"/><path d="m4 10 1.5 2L4 14"/><path d="m7 21 3-6-1.5-3"/><path d="m7 3 3 6h4"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',tower:'<path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/>',pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',camera:'<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',tri:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dashed:'<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',ext:'<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',list:'<path d="m9 18 6-6-6-6"/>'};
+const ic=(n,cls="")=>`<svg class="ic${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+const X='<svg class="ic" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+const PLAY='<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>';
+const PAUSE='<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect fill="currentColor" x="14" y="3" width="5" height="18" rx="1"/><rect fill="currentColor" x="5" y="3" width="5" height="18" rx="1"/></svg>';
 
 // keli kameralle valitulla hetkellä
 function clsAt(c,i=slot){
@@ -129,7 +132,7 @@ function warnGeo(){
 function addLayers(){
   map.addSource("fin",{type:"geojson",data:"data/finland.geojson"});
   map.addLayer({id:"outside",type:"fill",source:"fin",filter:["==",["get","role"],"mask"],
-    paint:{"fill-color":"#0b0d10","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
+    paint:{"fill-color":"#0a0a0a","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
   map.addLayer({id:"border",type:"line",source:"fin",filter:["==",["get","role"],"border"],
     paint:{"line-color":"#9fb0c4","line-opacity":["interpolate",["linear"],["zoom"],5,.35,9,0],"line-width":1}});
   map.addSource("warn",{type:"geojson",data:warnGeo()});
@@ -137,7 +140,7 @@ function addLayers(){
   map.addLayer({id:"warn-line",type:"line",source:"warn",filter:warnFilter(),paint:{"line-color":v("--warn"),"line-width":1.2,"line-opacity":.7,"line-dasharray":[3,2]}});
   map.addLayer({id:"warn-sel",type:"line",source:"warn",filter:["==",["get","i"],-1],paint:{"line-color":v("--warn"),"line-width":2.5}});
   map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"route-case",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#0b0d10","line-width":7}});
+  map.addLayer({id:"route-case",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#0a0a0a","line-width":7}});
   map.addLayer({id:"route",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c9d3df","line-width":3}});
   map.addSource("cams",{type:"geojson",data:geojson()});
   map.addLayer({id:"cams-halo",type:"circle",source:"cams",filter:["==",["get","k"],"jää/kuura"],
@@ -147,14 +150,14 @@ function addLayers(){
       "circle-radius":["interpolate",["linear"],["zoom"],4,["case",["==",["get","k"],"ei mittausta"],2.2,3.6],10,["case",["==",["get","k"],"ei mittausta"],5,8]],
       "circle-color":["match",["get","k"],...Object.entries(COLORS).flat(),"#888"],
       "circle-stroke-width":["case",["==",["get","k"],"ei mittausta"],0,["==",["get","k"],"jää/kuura"],2,1],
-      "circle-stroke-color":["case",["==",["get","k"],"jää/kuura"],"#ffffff","#0b0d10"],
+      "circle-stroke-color":["case",["==",["get","k"],"jää/kuura"],"#ffffff","#0a0a0a"],
       "circle-opacity":["case",["==",["get","dim"],1],.12,1],"circle-stroke-opacity":["case",["==",["get","dim"],1],0,1]}});
   map.addLayer({id:"cams-sel",type:"circle",source:"cams",filter:["==",["get","id"],""],
     paint:{"circle-radius":12,"circle-color":"transparent","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
 
   const tip=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
   map.on("mouseenter","cams",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;
-    tip.setLngLat(e.lngLat).setHTML(`${esc(nameOf(byId[p.id]))} · ${T().cls[p.k]}`).addTo(map)});
+    tip.setLngLat(e.lngLat).setHTML(`<span class="sw" style="background:${COLORS[p.k]}"></span>${esc(nameOf(byId[p.id]))}<span style="color:var(--text-2)">${T().cls[p.k]}</span>`).addTo(map)});
   map.on("mouseleave","cams",()=>{map.getCanvas().style.cursor="";tip.remove()});
   map.on("click",e=>{
     // kosketuksessa 22 px säde (44 px kosketusalue), hiirellä 8 px; lähin piste voittaa
@@ -195,12 +198,13 @@ function renderAll(){
   const u=document.getElementById("updated"); const today=new Date(DATA.run).toDateString()===new Date().toDateString();
   u.textContent=isMobile()&&today?fmtClock(DATA.run):fmt(DATA.run,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=DATA.run;
   const worse=worsening();
-  document.getElementById("tab-map").textContent=T().tabMap;
-  document.getElementById("tab-route").textContent=T().tabRoute;
+  // tekstit päivitetään vain, jos ne muuttuvat: uudelleenpiirto laskettaisiin uudeksi LCP:ksi
+  const setTab=(id,txt)=>{const sp=document.querySelector(`#${id}>span`); if(sp.textContent!==txt) sp.textContent=txt;};
+  setTab("tab-map",T().tabMap); setTab("tab-route",T().tabRoute);
   document.getElementById("from").placeholder=T().placeholderFrom; document.getElementById("to").placeholder=T().placeholderTo;
   document.getElementById("locate").setAttribute("aria-label",T().myLoc); document.getElementById("locate").title=T().myLoc;
-  document.getElementById("tab-worse").innerHTML=`${T().tabWorse}${worse.length?`<span class="badge num">${worse.length}</span>`:""}`;
-  document.getElementById("tab-roads").textContent=T().tabRoads;
+  setTab("tab-worse",T().tabWorse); setTab("tab-roads",T().tabRoads);
+  const bd=document.querySelector("#tab-worse .badge"); bd.hidden=!worse.length; bd.textContent=worse.length||"";
   renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
   if(current) current.type==="cam"?openCam(current.id,true):current.type==="warnlist"?openWarnList(current.only):openWarn(current.i,true);
 }
@@ -225,7 +229,7 @@ function renderLegend(){
 function warnItems(only){
   const now=Date.now();
   return WARN.length?WARN.map((w,i)=>{if(only&&!only.includes(i))return "";const on=new Date(w.onset)<=now;
-     return `<button class="warn${on?" now":""}" data-i="${i}"><b data-st="${on?T().inForce:T().upcoming}"><i></i>${esc(areaOf(w))}</b>
+     return `<button class="warn${on?" now":""}" data-i="${i}"><b data-st="${on?T().inForce:T().upcoming}">${ic("tri")}${esc(areaOf(w))}</b>
        <span class="hz">${esc(hazardOf(w))}</span><span class="num">${fmtTime(w.onset)} – ${fmtTime(w.expires)}</span></button>`}).join("")
      :`<p class="note">${T().noWarnings}</p>`;
 }
@@ -246,7 +250,7 @@ function renderWarnings(){
    warnItems()+
    "";
   el.classList.toggle("open",warnOpen);
-  el.insertAdjacentHTML("afterbegin",`<button class="warnsum" id="warnsum" aria-expanded="${warnOpen}"><i></i><b>${T().warnings}</b>
+  el.insertAdjacentHTML("afterbegin",`<button class="warnsum" id="warnsum" aria-expanded="${warnOpen}">${ic("tri","tri")}<b>${T().warnings}</b>
     <span class="num">${WARN.length}</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button>`);
   el.querySelectorAll(".warn").forEach(b=>b.onclick=()=>openWarn(+b.dataset.i));
   document.getElementById("warnsum").onclick=()=>{
@@ -437,7 +441,7 @@ function renderRoute(){
   const el=document.getElementById("rresult"), L=T();
   document.getElementById("rclear").hidden=!ROUTE.geom;
   if(!ROUTE.geom){ let last=null; try{last=JSON.parse(localStorage.getItem("route")||"null")}catch(e){}
-    el.innerHTML=(last&&last.from&&last.to?`<button class="last" id="lastroute">${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></button>`:"")+
+    el.innerHTML=(last&&last.from&&last.to?`<button class="last" id="lastroute">${ic("history")}<span>${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></span></button>`:"")+
       `<p class="blank credits" style="border:0">${L.routeSrc}</p>`;
     const lb=document.getElementById("lastroute"); if(lb) lb.onclick=()=>{ROUTE.from=last.from;ROUTE.to=last.to;
       document.getElementById("from").value=last.from.name; document.getElementById("to").value=last.to.name; maybeRoute();};
@@ -464,9 +468,9 @@ function renderRoute(){
         ${slip.length?`<li class="alert" style="--c:${COLORS[worstK]}"><span class="dot"></span><span>${L.slipN(slipTxt,kmf(slip[0].at),esc(nameOf(slip[0].c)))}</span></li>`
           :(meas.length?`<li class="ok" style="--c:${COLORS[worstK]}"><span class="dot"></span><span>${L.noSlip}${wet?L.wetN(wet):""}</span></li>`:"")}
         ${ROUTE.warns.length?(()=>{const first=[...ROUTE.warns].sort((a,b)=>new Date(a.w.onset)-new Date(b.w.onset))[0];
-          return `<li class="warnl"><span class="dot"></span><span>${act.length?L.warnOnRoute(act.length):L.warnLater(ROUTE.warns.length,fmtTime(first.w.onset))}
-          <button class="lnk" id="rwarns">${L.showWarnings}</button></span></li>`})():""}
-        ${pct?`<li class="gray"><span class="dot"></span><span>${L.unmeasured(pct,Math.round(gap/10)*10,kmf(ga),kmf(gb))}</span></li>`:""}
+          return `<li class="warnl">${ic("tri")}<span>${act.length?L.warnOnRoute(act.length):L.warnLater(ROUTE.warns.length,fmtTime(first.w.onset))}
+          <br><button class="btn lnk" id="rwarns">${L.showWarnings}${ic("list")}</button></span></li>`})():""}
+        ${pct?`<li class="gray">${ic("dashed")}<span>${L.unmeasured(pct,Math.round(gap/10)*10,kmf(ga),kmf(gb))}</span></li>`:""}
       </ul>
       <p class="disc">${L.disclaimer}</p>
     </div>
@@ -579,7 +583,7 @@ function openCam(id,keep){
   const cap=!past?"":shot?` · ${L.camTaken(fmtClock(new Date(shot.t).toISOString()))}${gap>20*6e4?` (${L.camGap(fmtGap(gap))})`:""}`
     :shot===null?`<br>${L.camLatest}`:`<br>${L.camLoading}`;
   const sub=k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
-    :`${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span> · ${L.station} ${c.st} · <span class="num">${num(c.km," km")}</span>`;
+    :`<span>${ic("clock")}${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span></span><span>${ic("tower")}${L.station} ${c.st}</span><span>${ic("pin")}<span class="num">${num(c.km," km")}</span></span>`;
   const p=document.getElementById("panel");
   p.setAttribute("aria-label",nameOf(c));
   p.innerHTML=`<div class="scroll">
@@ -587,15 +591,15 @@ function openCam(id,keep){
       <button class="x" aria-label="${L.close}">${X}</button></div>
     <div class="place"><h2 tabindex="-1">${esc(nameOf(c))}</h2>${placeLine(c)}</div>
     <figure class="shot"><img ${src?`src="${src}" alt="${esc(nameOf(c))}"`:'alt=""'}>
-      <figcaption>${L.camNow}${c.view?" · "+esc((L.viewMap[c.view])||c.view.replace(/^Tie (\d)/,LANG==="en"?"Road $1":"Tie $1")):""}<span id="camtime"></span>${cap}</figcaption></figure>
+      <figcaption>${ic("camera")}${L.camNow}${c.view?" · "+esc((L.viewMap[c.view])||c.view.replace(/^Tie (\d)/,LANG==="en"?"Road $1":"Tie $1")):""}<span id="camtime"></span>${cap}</figcaption></figure>
     ${k!=="ei mittausta"?`<dl class="read">
-        <div class="kv joined"><dt>${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
+        <div class="kv joined"><dt>${ic("gauge")}${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
         ${["jää/kuura","luminen"].includes(k)&&fr!=null&&fr>=0.6&&!past&&(c.ice||c.snow)?`<p class="thin">${L.thinIce(num(Math.max(c.ice||0,c.snow||0)," mm",2))}</p>`:""}
-        ${past?"":`<div class="kv"><dt>${L.roadT}</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
-        <div class="kv"><dt>${L.airT}</dt><dd class="num">${num(c.airT," °C")}</dd></div>
-        <div class="kv"><dt>${L.water}</dt><dd class="num">${num(c.water," mm",2)}</dd></div>
-        <div class="kv"><dt>${L.snow}</dt><dd class="num">${num(c.snow," mm",2)}</dd></div>
-        <div class="kv"><dt>${L.ice}</dt><dd class="num">${num(c.ice," mm",2)}</dd></div>`}
+        ${past?"":`<div class="kv"><dt>${ic("thermo")}${L.roadT}</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
+        <div class="kv"><dt>${ic("thermoSun")}${L.airT}</dt><dd class="num">${num(c.airT," °C")}</dd></div>
+        <div class="kv"><dt>${ic("droplet")}${L.water}</dt><dd class="num">${num(c.water," mm",2)}</dd></div>
+        <div class="kv"><dt>${ic("cloudSnow")}${L.snow}</dt><dd class="num">${num(c.snow," mm",2)}</dd></div>
+        <div class="kv"><dt>${ic("snowflake")}${L.ice}</dt><dd class="num">${num(c.ice," mm",2)}</dd></div>`}
       </dl>`
     :(c.cls?"":`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`)}
     ${c.h?`<div class="hist"><h3>${L.last24}</h3>
@@ -620,7 +624,7 @@ function openWarn(i,keep){
       <button class="x" aria-label="${L.close}">${X}</button></div>
     <div class="wpanel"><p class="num">${fmtTime(w.onset)} – ${fmtTime(w.expires)}</p>
       <p>${esc(w.description[LANG]||w.description.fi||"")}</p>
-      <p class="src">${L.warnSrc} · <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener">${L.readMore} ↗</a></p></div>
+      <p class="src">${L.warnSrc} · <a class="btn" href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener">${L.readMore}${ic("ext")}</a></p></div>
   </div>`;
   p.classList.add("on"); panelShown(p);
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" content="#0a0a0a">
 <meta name="color-scheme" content="dark">
 <title>Kelikamera · Suomen tiet nyt</title>
 <meta name="description" content="Tien pinnan tila Fintrafficin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
@@ -14,13 +14,29 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- ei estä ensimmäistä piirtoa: kartan tyylit ja fontti ladataan rinnalla -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"></noscript>
 <style>
+/* =====================================================================
+   Kelikamera UI v4 – komponenttijärjestelmä (DECISIONS.md 2026-11-11)
+   Yksi pinta-, varjo-, kulma- ja välistysasteikko kaikille paneeleille.
+   ===================================================================== */
 :root{
-  --bg:#0b0d10; --surface:#171b21; --surface-2:#1f242c; --rule:#2e353f;
-  --text:#eef1f4; --text-2:#a3acb8; --focus:#ffd23f; --warn:#f5c518;
-  --kuiva:#34c77b; --kostea:#8fc7ff; --marka:#2f7bf6; --luminen:#f2f4f8; --jaa:#ff4766; --none:#7d8794;
+  /* pinnat: tumma pohja, kelluva kortti, upotettu ohjain, korostus */
+  --bg:#0a0a0a; --surface:#151515; --surface-2:#1c1c1c; --surface-3:#262626;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.11); --rule:var(--line);
+  --text:#fafafa; --text-2:#a3a3a3; --text-3:#8c8c8c;
+  --focus:#ffd23f; --warn:#f5c518;
+  --kuiva:#34c77b; --kostea:#8fc7ff; --marka:#2f7bf6; --luminen:#f2f4f8; --jaa:#ff4766; --none:#7f7f7f;
+  /* kulmat: sisäkkäiset pinnat pienenevät pehmusteen verran */
+  --r-xl:14px; --r-lg:10px; --r-md:8px; --r-sm:5px; --r-xs:3px;
+  /* korkeus: hiusviiva + yläreunan valo + kerrostetut pehmeät varjot */
+  --hair:0 0 0 1px var(--line);
+  --lift:inset 0 1px 0 rgba(255,255,255,.045);
+  --elev-1:var(--hair),var(--lift),0 1px 2px rgba(0,0,0,.35),0 4px 10px -2px rgba(0,0,0,.3);
+  --elev-2:var(--hair),var(--lift),0 1px 1px rgba(0,0,0,.3),0 6px 16px -4px rgba(0,0,0,.45),0 22px 44px -12px rgba(0,0,0,.55);
+  --elev-3:0 0 0 1px var(--line-2),0 2px 4px rgba(0,0,0,.35),0 12px 28px -6px rgba(0,0,0,.6);
+  --ease-out:cubic-bezier(.23,1,.32,1); --ease-drawer:cubic-bezier(.32,.72,0,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
@@ -28,204 +44,249 @@ html,body{overscroll-behavior:none}
 button,[role="tab"],a{touch-action:manipulation}
 button,[role="tab"]{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .tabpanel,.panel .scroll,.sugg{overscroll-behavior:contain}
-html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Fira Sans",system-ui,sans-serif}
+html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Geist",system-ui,sans-serif;font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased}
 button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 #map{position:fixed;inset:0}
 .num{font-variant-numeric:tabular-nums}
-.sw{display:inline-block;width:10px;height:10px;border-radius:1px;flex:none}
+/* värineliö: valkoisella lumella hiusviivareuna, jotta se erottuu vaalealla */
+/* värimerkki on ympyrä kuten kartan piste (neliö luettiin valkoisena valintaruutuna) */
+.ic{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
+
+/* ---------- kelluvat pinnat (kortti, aikajana, paneeli) ---------- */
+.key,.timeline,.panel{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--elev-2)}
+.timeline{box-shadow:var(--elev-1)}
 
 /* ---------- vasen kortti ---------- */
-.key{position:fixed;left:16px;top:16px;z-index:5;width:356px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;
-  background:var(--surface);border:1px solid var(--rule);border-radius:4px}
-.key header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--rule)}
-.brand{display:flex;align-items:center;gap:8px}
+.key{position:fixed;left:16px;top:16px;z-index:5;width:360px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden}
+.key header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 12px 12px 16px}
+.brand{display:flex;align-items:center;gap:9px}
 .brand .mark{flex:none;color:var(--text)}
-.key h1{font-size:16px;font-weight:600;letter-spacing:-.005em}
-.key time{white-space:nowrap;font-size:13px;color:var(--text-2);font-variant-numeric:tabular-nums;margin-left:8px}
-.lang{display:flex;border:1px solid var(--rule);border-radius:2px}
-.lang button{padding:4px 8px;font-size:12px;color:var(--text-2);min-width:34px}
-.lang button[aria-pressed="true"]{background:var(--surface-2);color:var(--text)}
-.tabs{display:flex;border-bottom:1px solid var(--rule)}
-.tabs button{flex:1 1 auto;white-space:nowrap;padding:11px 10px 10px;font-size:13px;color:var(--text-2);border-bottom:2px solid transparent;margin-bottom:-1px}
-.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--text)}
-.tabs .badge{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:2px;background:var(--jaa);color:#111;font-size:12px;font-weight:600}
+.key h1{font-size:16px;font-weight:600;letter-spacing:-.015em}
+.key time{white-space:nowrap;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+/* segmentoitu valitsin (FI/EN) */
+.lang{display:flex;padding:2px;gap:2px;border-radius:var(--r-md);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}
+.lang button{padding:3px 8px;font-size:12px;font-weight:500;color:var(--text-3);min-width:32px;border-radius:var(--r-sm)}
+.lang button[aria-pressed="true"]{background:var(--surface-3);color:var(--text);box-shadow:var(--lift),0 1px 2px rgba(0,0,0,.4)}
+/* välilehdet: ohut ilmaisin, aktiivinen painotetaan painolla */
+.tabs{display:flex;gap:2px;padding:0 8px;box-shadow:inset 0 -1px 0 var(--line)}
+.tabs button{position:relative;flex:1 1 auto;white-space:nowrap;padding:10px 8px 11px;font-size:13px;font-weight:500;color:var(--text-3)}
+.tabs button::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:2px;border-radius:2px 2px 0 0;background:var(--text);opacity:0;transform:scaleX(.6);transition:opacity .2s var(--ease-out),transform .2s var(--ease-out)}
+.tabs button[aria-selected="true"]{color:var(--text)}
+.tabs button[aria-selected="true"]::after{opacity:1;transform:none}
+.tabs .badge[hidden]{display:none}
+.badge,.tabs .badge{display:inline-block;min-width:18px;margin-left:6px;padding:1px 5px;border-radius:var(--r-xs);background:var(--jaa);color:#140608;font-size:11px;line-height:15px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
 .tabpanel{overflow:auto}
 .key.loading #warnsec,.key.loading .credits{visibility:hidden}
-@media (min-width:721px){#rows:empty{min-height:372px}}
-.fold{display:none;width:40px;height:32px;place-items:center;border-radius:2px;color:var(--text-2)}
-.fold svg{transition:transform .2s}
+@media (min-width:721px){#rows:empty{min-height:288px}}
+.fold{display:none;width:36px;height:32px;place-items:center;border-radius:var(--r-md);color:var(--text-2)}
+.fold svg{transition:transform .2s var(--ease-out)}
 .key.collapsed .fold svg{transform:rotate(-90deg)}
 .tabpanel[hidden]{display:none}
-.rows{list-style:none;padding:8px 0}
-.row{width:100%;display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:12px;padding:9px 16px 12px;text-align:left;position:relative}
+
+/* ---------- listarivi: yhteinen kaikille listoille (selite, listat, varoitukset) ---------- */
+.rows,.list{list-style:none;padding:6px}
+.row,.item,.warn{width:100%;text-align:left;border-radius:var(--r-lg);position:relative}
+.row{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:12px;padding:10px 12px;margin:2px 0}
 .row .lbl{font-size:14px}
 .row .n{font-size:13px;color:var(--text-2)}
-.row .share{position:absolute;left:38px;right:16px;bottom:5px;height:2px;background:var(--rule)}
-.row .share i{display:block;height:100%;background:currentColor;opacity:.55}
+.row>*{position:relative}
+.row .share{position:absolute;inset:3px;border-radius:var(--r-md);overflow:hidden;pointer-events:none}
+.row .share i{display:block;height:100%;min-width:3px;border-radius:var(--r-md);background:color-mix(in srgb,currentColor 16%,transparent);box-shadow:inset 2px 0 0 color-mix(in srgb,currentColor 70%,transparent)}
 .row[aria-pressed="false"] .lbl,.row[aria-pressed="false"] .n{opacity:.4;text-decoration:line-through}
-.row[aria-pressed="false"] .sw{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--text-2)}
-.sec{border-top:1px solid var(--rule);padding:18px 16px 16px}
-.sec h2{font-size:14px;font-weight:600;color:var(--text);display:flex;justify-content:space-between}
-.sec h2 .num{font-weight:500;color:var(--text-2)}
-.sec .sub{margin:2px 0 10px}
-.note{font-size:12px;color:var(--text-2)}
-.warn{display:block;width:100%;text-align:left;padding:11px 0;border-top:1px solid var(--rule)}
-.warn:first-of-type{border-top:0}
-.warn b{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
-.warn b i{width:10px;height:10px;border:2px solid var(--warn);background:rgba(245,197,24,.25);flex:none}
-.warn span{display:block;font-size:12px;color:var(--text-2);margin:2px 0 0 18px}
-.warn .hz{display:block;font-size:12px;color:var(--text-2);margin:2px 0 0 18px}
-.warn b::after{content:attr(data-st);flex:none;margin-left:auto;font-size:12px;font-weight:500;color:var(--text-2);border:1px solid var(--rule);padding:0 5px;border-radius:2px}
-.warn.now b::after{content:attr(data-st);font-size:12px;font-weight:600;color:#111;background:var(--warn);padding:0 5px;border-radius:2px}
+.row[aria-pressed="false"] .sw{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--text-3)}
+.item{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;padding:10px}
+.list li+li .item::before{content:"";position:absolute;left:32px;right:10px;top:0;height:1px;background:var(--line)}
+.item b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;font-weight:500;line-height:1.3}
+.item small{display:block;font-size:12px;color:var(--text-2);margin-top:1px}
+.item .ago,.item .km{font-size:12px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.blank{padding:14px 16px;font-size:13px;color:var(--text-2)}
+
+/* ---------- osiot ---------- */
+.sec{padding:16px;box-shadow:inset 0 1px 0 var(--line)}
+.sec.explain{box-shadow:none;padding:14px 16px 4px}
+.sec h2{font-size:14px;font-weight:600;letter-spacing:-.005em;color:var(--text);display:flex;justify-content:space-between;align-items:baseline}
+.sec h2 .num{font-weight:500;font-size:13px;color:var(--text-3)}
+.sec .sub{margin:2px 0 8px}
+.note{font-size:12px;line-height:1.5;color:var(--text-2)}
+
+/* varoitusrivi */
+#warnsec .warn{margin:0 -10px;width:calc(100% + 20px)}
+.warn{display:block;padding:10px}
+.warn+.warn::before{content:"";position:absolute;left:32px;right:10px;top:0;height:1px;background:var(--line)}
+.warn b{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;line-height:1.3}
+.warn b .ic{color:var(--warn);width:14px;height:14px}
+.warn span{display:block;font-size:12px;color:var(--text-3);margin:3px 0 0 22px;font-variant-numeric:tabular-nums}
+.warn .hz{color:var(--text-2);line-height:1.4}
+.warn b::after{content:attr(data-st);flex:none;margin-left:auto;font-size:11px;line-height:16px;font-weight:500;color:var(--text-2);padding:0 6px;border-radius:var(--r-xs);box-shadow:inset 0 0 0 1px var(--line-2)}
+.warn.now b::after{font-weight:600;color:#1a1400;background:var(--warn);box-shadow:none}
 .warnsum{display:none;width:100%;align-items:center;gap:10px;padding:10px 0 2px;text-align:left;min-height:40px}
-.warnsum i{width:10px;height:10px;border:2px solid var(--warn);background:rgba(245,197,24,.25);flex:none}
+.warnsum .ic.tri{color:var(--warn);width:14px;height:14px}
 .warnsum b{font-size:14px;font-weight:600}
-.warnsum .num{margin-left:auto;color:var(--text-2)}
-.warnsum svg{color:var(--text-2)}
-.wlist{padding:4px 14px 14px 20px}
-.list{list-style:none}
-.item{width:100%;display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;padding:11px 16px;text-align:left;border-bottom:1px solid var(--rule)}
-.item b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;font-weight:500}
-.item small{display:block;font-size:12px;color:var(--text-2)}
-.item .ago{font-size:12px;color:var(--text-2);white-space:nowrap}
-.blank{padding:16px;font-size:13px;color:var(--text-2)}
-.roadsel{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--rule)}
+.warnsum .num{margin-left:auto;color:var(--text-3)}
+.warnsum svg{color:var(--text-3)}
+.wlist{padding:4px 10px 12px}
+
+/* ---------- lomake-ohjaimet (kenttä, valinta, ikonipainike) ---------- */
+.field input,.roadsel select{width:100%;min-width:0;padding:9px 11px;border:0;border-radius:var(--r-md);background:var(--bg);color:var(--text);font:inherit;font-size:16px;
+  box-shadow:inset 0 0 0 1px var(--line-2),inset 0 1px 2px rgba(0,0,0,.35);transition:box-shadow .15s ease}
+.field input::placeholder{color:var(--text-3)}
+.field .in{position:relative}
+.field .in>.ic{position:absolute;left:11px;top:50%;margin-top:-7.5px;color:var(--text-3);pointer-events:none}
+.field .in>.ic+input{padding-left:34px}
+.field input:focus-visible,.roadsel select:focus-visible{outline:0;box-shadow:inset 0 0 0 1px var(--focus),0 0 0 3px rgba(255,210,63,.18)}
+.roadsel{display:flex;gap:10px;align-items:center;padding:12px 16px}
 .roadsel label{font-size:13px;color:var(--text-2)}
-.roadsel select{flex:1;padding:6px 8px;border:1px solid var(--rule);border-radius:2px;background:var(--surface-2)}
-.roadstrip{padding:14px 16px 10px;border-bottom:1px solid var(--rule)}
-.roadstrip .bars{display:flex;gap:1px;height:16px}
+.roadsel select{flex:1;font-size:15px;padding:8px 32px 8px 11px;appearance:none;-webkit-appearance:none;
+  background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23a3a3a3' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 11px center}
+.iconbtn{flex:none;width:40px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.roadstrip{padding:12px 16px 10px}
+.roadstrip .bars{display:flex;gap:1px;height:14px;border-radius:var(--r-sm);overflow:hidden}
 .roadstrip .bars i{flex:1}
-.roadstrip .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-top:4px}
+.roadstrip .ends,.rstrip .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums}
 
 /* ---------- reitti ---------- */
 .rform{padding:14px 16px 6px;display:grid;gap:10px}
 .field{position:relative}
-.field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:5px}
 .field .in{display:flex;gap:6px}
-.field input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--rule);border-radius:2px;background:var(--surface-2);color:var(--text);font:inherit;font-size:16px}
-.field input:focus-visible{outline:2px solid var(--focus);outline-offset:0}
-.iconbtn{flex:none;width:38px;display:grid;place-items:center;border:1px solid var(--rule);border-radius:2px;color:var(--text-2)}
-.sugg{position:absolute;left:0;right:0;top:100%;z-index:3;list-style:none;background:var(--surface-2);border:1px solid var(--rule);border-top:0;max-height:220px;overflow:auto}
-.sugg button{display:block;width:100%;text-align:left;padding:8px 10px;font-size:14px}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:3;list-style:none;padding:4px;background:var(--surface-2);border-radius:var(--r-lg);box-shadow:var(--elev-3);max-height:240px;overflow:auto}
+.sugg button{display:block;width:100%;text-align:left;padding:8px 10px;font-size:14px;border-radius:var(--r-md)}
 .sugg button small{display:block;font-size:12px;color:var(--text-2)}
-.sugg button[aria-selected="true"]{background:var(--rule)}
+.sugg button[aria-selected="true"]{background:var(--surface-3)}
 .rbtns{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-2);min-height:24px}
-.rbtns button{color:var(--text-2);text-decoration:underline}
-.rsum{padding:12px 16px 14px;border-top:1px solid var(--rule)}
-.rsum .trip{font-size:15px;font-weight:600}
+.rbtns button{margin-right:-8px}
+.last .ic{width:16px;height:16px;color:var(--text-3)}
+.last{display:grid;grid-template-columns:16px 1fr;gap:10px;align-items:center;width:calc(100% - 12px);margin:6px;text-align:left;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.last small{display:block;color:var(--text-3);font-size:12px;font-weight:400;margin-top:1px}
+.last span{min-width:0}
+.rsum{margin:6px;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.rsum .trip{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .rsum .meta{font-size:13px;color:var(--text-2);margin-top:2px}
-.rsum .mix{display:flex;height:8px;margin:12px 0 6px;border-radius:1px;overflow:hidden;background:var(--rule)}
+.rsum .mix{display:flex;height:6px;margin:12px 0 8px;border-radius:6px;overflow:hidden;background:var(--line)}
 .rsum .mix i{display:block}
-.rsum ul{list-style:none;margin-top:10px;display:grid;gap:8px;font-size:14px}
+.rsum ul{list-style:none;margin-top:12px;display:grid;gap:9px;font-size:14px;line-height:1.4}
 .rsum li{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start}
-.rsum li .dot{width:10px;height:10px;margin-top:5px;border-radius:1px}
+.rsum li .dot{width:10px;height:10px;margin-top:5px;border-radius:50%}
 .rsum li.alert .dot{background:var(--c,var(--jaa))}
 .rsum li.ok .dot{background:var(--c,var(--kuiva))}
-.rsum li.warnl .dot{background:transparent;border:2px solid var(--warn)}
-.rsum li.gray .dot{background:var(--none)}
-.rsum .disc{font-size:12px;color:var(--text-2);margin-top:12px}
-.rstrip{padding:12px 16px 10px;border-top:1px solid var(--rule)}
-.rstrip .bars{position:relative;height:16px;background:var(--surface-2)}
-.rstrip .bars i{position:absolute;top:0;bottom:0;width:4px;margin-left:-2px}
-.rstrip .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-top:4px;font-variant-numeric:tabular-nums}
-.lnk{display:inline;text-decoration:underline;color:var(--text);margin-left:2px}
-.item .km{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rsum li .ic{margin-top:3px;width:14px;height:14px}
+.rsum li.warnl .ic{color:var(--warn)}
+.rsum li.gray .ic{color:var(--text-3)}
+.rsum .disc{font-size:12px;color:var(--text-3);margin-top:12px;padding-top:10px;box-shadow:inset 0 1px 0 var(--line)}
+.rstrip{padding:10px 16px 6px}
+.rstrip .bars{position:relative;height:14px;border-radius:var(--r-sm);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}
+.rstrip .bars i{position:absolute;top:2px;bottom:2px;width:4px;margin-left:-2px;border-radius:1px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--text);background:var(--surface-3);box-shadow:var(--hair),var(--lift);text-decoration:none;white-space:nowrap}
+.btn .ic{width:14px;height:14px;color:var(--text-2)}
+.btn.ghost{background:none;box-shadow:none;color:var(--text-2);padding:0 8px;height:28px}
+.lnk{margin-top:8px}
 
 /* ---------- aikajana ---------- */
 .timeline{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));
-  display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;padding:6px 14px 6px 8px;
-  background:var(--surface);border:1px solid var(--rule);border-radius:4px}
-.timeline .play{width:40px;height:40px;display:grid;place-items:center;border-radius:2px}
+  display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;padding:6px 14px 6px 6px}
+.timeline .play{width:40px;height:40px;display:grid;place-items:center;border-radius:var(--r-lg)}
 .tl{position:relative;height:50px}
 .tbars{position:absolute;left:0;right:0;top:4px;height:28px;display:flex;gap:2px;align-items:stretch}
-.tbars .col{flex:1;display:flex;flex-direction:column-reverse;border-radius:1px;overflow:hidden;opacity:.4;transition:opacity .15s}
+.tbars .col{flex:1;display:flex;flex-direction:column-reverse;border-radius:2px;overflow:hidden;opacity:.38;transition:opacity .15s ease}
 .tbars .col.sel{opacity:1;box-shadow:0 0 0 1.5px var(--text)}
 .tbars .col.past{opacity:.55}
 .tbars .col i{display:block}
 .tbars .tempty{margin:auto;font-size:12px;color:var(--text-2)}
-.noimg{aspect-ratio:16/9;display:grid;place-items:center;background:var(--surface-2);color:var(--text-2);font-size:13px;border-radius:2px}
 .tl input{position:absolute;left:0;right:0;top:0;height:36px;width:100%;margin:0;opacity:0;cursor:pointer}
-.tl:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:3px;border-radius:2px}
-.tticks{position:absolute;left:0;right:0;bottom:0;height:14px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.tl:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:3px;border-radius:var(--r-sm)}
+.tticks{position:absolute;left:0;right:0;bottom:0;height:14px;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
 .tticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-.timeline output{font-size:13px;min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+.timeline output{font-size:13px;font-weight:500;min-width:88px;text-align:right;font-variant-numeric:tabular-nums}
 .timeline output.past{color:var(--warn)}
 
 /* ---------- tietopaneeli ---------- */
-.panel{position:fixed;right:16px;top:16px;bottom:16px;width:360px;z-index:6;display:flex;flex-direction:column;
-  background:var(--surface);border:1px solid var(--rule);border-radius:4px;overflow:hidden;
-  transform:translateX(calc(100% + 32px));transition:transform .22s cubic-bezier(.2,.7,.2,1)}
-.panel.on{transform:none}
-.panel .scroll{overflow:auto;flex:1}
-.status{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 14px 12px 20px;border-bottom:1px solid var(--rule)}
-.status::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c)}
-.status b{display:block;font-size:22px;font-weight:600;line-height:1.15}
-.last{display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:var(--text);border-bottom:1px solid var(--rule)}
-.last small{display:block;color:var(--text-2);font-size:12px}
-.thin{margin:6px 0 0;font-size:12px;color:var(--text-2)}
-.status b.long{font-size:17px;line-height:1.25}
-.status small{display:block;margin-top:3px;font-size:12px;color:var(--text-2)}
-.x{flex:none;width:40px;height:40px;margin:-6px -6px 0 0;display:grid;place-items:center;border-radius:2px;color:var(--text-2)}
-.place{padding:12px 14px 10px 20px}
-.place h2{font-size:15px;font-weight:600}
+.panel{position:fixed;right:16px;top:16px;bottom:16px;width:368px;z-index:6;display:flex;flex-direction:column;overflow:hidden;
+  transform:translateX(calc(100% + 32px));transition:transform .2s var(--ease-out)}
+.panel.on{transform:none;transition-duration:.32s}
+.panel .scroll{overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--surface-3) transparent}
+/* tilaotsikko: luokan väri hehkuu yläreunasta, ei paksua reunapalkkia */
+.status{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 12px 14px 18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 13%,transparent),color-mix(in srgb,var(--c) 0%,transparent) 100%);box-shadow:inset 0 -1px 0 var(--line)}
+.status b{display:block;font-size:22px;font-weight:600;line-height:1.15;letter-spacing:-.02em}
+.status b.long{font-size:17px;line-height:1.25;letter-spacing:-.01em}
+.status small{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-top:6px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.status small>span{display:inline-flex;align-items:center;gap:5px}
+.status small .ic{width:13px;height:13px;color:var(--text-3)}
+.x{flex:none;width:36px;height:36px;margin:-4px 0 0;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:rgba(255,255,255,.04);box-shadow:var(--hair)}
+.place{padding:14px 18px 10px}
+.place h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.place h2:focus{outline:0}
 .place p{font-size:13px;color:var(--text-2)}
-.shot{margin:0 14px 0 20px}
-.shot img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000;border-radius:2px}
-.shot figcaption{font-size:12px;color:var(--text-2);margin-top:6px}
-.read{margin:14px 14px 0 20px;border-top:1px solid var(--rule)}
-.read .kv{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--rule)}
-.read .kv.joined{border-bottom:0;padding-bottom:2px}
-.read dt{font-size:13px;color:var(--text-2)}
-.read dd{font-size:15px;font-weight:500}
-.scale{padding:8px 0 12px;border-bottom:1px solid var(--rule)}
-.scale .bar{position:relative;height:8px;border-radius:1px;background:linear-gradient(90deg,var(--jaa),#f5a524 45%,var(--kuiva))}
-.scale .mark{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;background:#fff;box-shadow:0 0 0 2px var(--surface)}
-.scale .ends{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--text-2)}
-.empty{margin:14px 14px 0 20px;padding:2px 0 2px 12px;border-left:2px solid var(--none);font-size:13px;color:var(--text-2)}
+.shot{margin:0 18px;position:relative}
+.shot img,.noimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000;border-radius:var(--r-lg)}
+.shot::after{content:"";position:absolute;left:0;right:0;top:0;aspect-ratio:16/9;border-radius:var(--r-lg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
+.noimg{display:grid;place-items:center;background:var(--surface-2);color:var(--text-2);font-size:13px}
+.shot figcaption{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.45}
+.shot figcaption .ic{width:13px;height:13px;margin-right:5px;vertical-align:-2px}
+/* lukemat: upotettu ryhmä, rivit hiusviivoin */
+.read{margin:14px 18px 0;padding:2px 12px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.read .kv{display:flex;justify-content:space-between;align-items:center;padding:9px 0;box-shadow:inset 0 -1px 0 var(--line)}
+.read .kv:last-child{box-shadow:none}
+.read .kv.joined{box-shadow:none;padding-bottom:2px}
+.read dt{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-2)}
+.read dt .ic{color:var(--text-3)}
+.read dd{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
+.scale{padding:8px 0 12px;box-shadow:inset 0 -1px 0 var(--line)}
+.scale .bar{position:relative;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--jaa),#f5a524 45%,var(--kuiva))}
+.scale .mark{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px var(--surface-2),0 1px 3px rgba(0,0,0,.5)}
+.scale .ends{display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:var(--text-3)}
+.thin{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--text-2)}
+.empty{margin:14px 18px 0;padding:12px 14px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift);font-size:13px;line-height:1.45;color:var(--text-2)}
 .empty strong{display:block;color:var(--text);font-weight:500;margin-bottom:2px}
-.hist{margin:16px 14px 18px 20px}
-.hist h3{font-size:13px;font-weight:500;color:var(--text-2);margin-bottom:6px}
-.strip{display:flex;gap:1px}
-.strip i{flex:1;height:14px}
+.hist{margin:18px 18px 20px}
+.hist h3{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:8px}
+.strip{display:flex;gap:2px}
+.strip i{flex:1;height:14px;border-radius:2px}
 .strip i.sel{outline:2px solid #fff;outline-offset:-1px}
-.strip-t{display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-top:4px;font-variant-numeric:tabular-nums}
-.wpanel{margin:14px 14px 18px 20px;font-size:14px}
+.strip-t{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums}
+.wpanel{margin:14px 18px 20px;font-size:14px;line-height:1.5}
 .wpanel p{margin-top:8px}
-.wpanel .src{font-size:12px;color:var(--text-2);margin-top:12px}
-.wpanel a{color:var(--text)}
+.wpanel .src{font-size:12px;color:var(--text-3);margin-top:14px}
+.wpanel .src{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 
-.credits{border-top:1px solid var(--rule);padding:10px 16px 12px;font-size:12px;line-height:1.5;color:var(--text-2)}
+.credits{box-shadow:inset 0 1px 0 var(--line);padding:12px 16px 14px;font-size:12px;line-height:1.5;color:var(--text-3)}
 .credits a{color:var(--text-2)}
-.tabpanel{scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
-.tabpanel::-webkit-scrollbar{width:6px}
-.tabpanel::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px}
+.tabpanel{scrollbar-width:thin;scrollbar-color:var(--surface-3) transparent}
+.tabpanel::-webkit-scrollbar,.panel .scroll::-webkit-scrollbar{width:6px}
+.tabpanel::-webkit-scrollbar-thumb,.panel .scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+
+/* ---------- MapLibre: samat pinnat ---------- */
 .maplibregl-ctrl-attrib{display:none}
-.maplibregl-ctrl-bottom-right{bottom:84px}
-.maplibregl-ctrl-group{border-radius:2px!important;background:var(--surface)!important;border:1px solid var(--rule);box-shadow:none!important}
-.maplibregl-ctrl-group button+button{border-top:1px solid var(--rule)!important}
-.maplibregl-ctrl-group button span{filter:invert(1)}
-.maplibregl-popup-content{background:var(--surface);color:var(--text);border:1px solid var(--rule);border-radius:2px;padding:5px 8px;font:13px "Fira Sans",sans-serif;box-shadow:none}
+.maplibregl-ctrl-bottom-right{bottom:84px;right:6px}
+.maplibregl-ctrl-group{border-radius:var(--r-lg)!important;background:var(--surface)!important;box-shadow:var(--elev-1)!important;overflow:hidden}
+.maplibregl-ctrl-group button{width:34px!important;height:34px!important}
+.maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
+.maplibregl-ctrl-group button span{filter:invert(1);opacity:.85}
+.maplibregl-popup-content{display:flex;align-items:center;gap:7px;background:var(--surface-2);color:var(--text);border-radius:999px;padding:5px 11px 5px 9px;font-weight:500;font:12.5px "Geist",sans-serif;box-shadow:var(--elev-3)}
 .maplibregl-popup-tip{display:none}
 
 @media (max-width:720px){
-  .key{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:auto;max-height:52vh;max-height:52dvh}
+  .key{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:auto;max-height:52vh;max-height:52dvh;border-radius:var(--r-xl)}
   .fold{display:grid}
   .key.collapsed .tabpanel{display:none}
-  .key.collapsed .tabs button[aria-selected="true"]{border-bottom-color:transparent}
-  .rows{display:grid;grid-template-columns:1fr 1fr;padding:2px 0}
-  .row{padding:8px 12px;min-height:40px}
-  .row .share{display:none}
+  .key.collapsed .tabs{box-shadow:none}
+  .key.collapsed .tabs button[aria-selected="true"]::after{opacity:0}
+  .rows{display:grid;grid-template-columns:1fr 1fr;padding:4px}
+  .row{padding:9px 10px;min-height:40px}
   .sec.explain{display:none}
   #warnsec h2,#warnsec .sub,#warnsec .warn,#warnsec>.note{display:none}
-  #warnsec{padding-top:0}
+  #warnsec{padding-top:2px;padding-bottom:10px}
   .warnsum{display:flex}
   .timeline{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:calc(100% - 16px)}
-  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;max-height:72dvh;border-radius:8px 8px 0 0;border-bottom:0;
-    padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .45s cubic-bezier(.32,.72,0,1);
-    transform:translateY(105%);z-index:7}
-  .panel.on{transform:none}
-  .panel::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--rule);margin:8px auto 0}
+  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;max-height:72dvh;border-radius:18px 18px 0 0;
+    padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .45s var(--ease-drawer);
+    transform:translateY(105%);z-index:7;box-shadow:0 0 0 1px var(--line),var(--lift),0 -12px 40px rgba(0,0,0,.55)}
+  .panel.on{transform:none;transition-duration:.45s}
+  .panel::before{content:"";position:absolute;left:50%;top:7px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:rgba(255,255,255,.22);z-index:1}
+  .status{padding-top:20px}
+  .x{width:40px;height:40px}
   .panel .status{touch-action:none}  /* otsikkoalue on vetokahva: selain ei vieritä eikä päivitä sivua kesken vedon */
   .maplibregl-ctrl-bottom-right{display:none}
 }
@@ -239,23 +300,37 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   #warnsec.open .warn{display:block}
   #warnsec.open{padding-bottom:10px}
 }
-.warnsum svg{transition:transform .2s}
+.warnsum svg{transition:transform .2s var(--ease-out)}
+.warn[aria-current="true"]{background:var(--surface-2)}
 .warn[aria-current="true"] b{color:var(--warn)}
 #warnsec.open .warnsum svg{transform:rotate(90deg)}
-/* painallus: palaute heti kun sormi osuu (toimii kaikilla syötteillä) */
-.row,.item,.warn,.warnsum,.tabs button,.iconbtn,.x,.play,.lang button,.sugg button{transition:background-color .1s ease-out}
-.row:active,.item:active,.warn:active,.warnsum:active,.tabs button:active,.sugg button:active{background:var(--surface-2)}
-.iconbtn:active,.x:active,.play:active,.lang button:active{background:var(--rule)}
+/* painallus: palaute heti kun sormi osuu – tausta ja pieni skaalaus (Emil Kowalski: scale .97–.98) */
+.row,.item,.warn,.warnsum,.tabs button,.iconbtn,.x,.play,.lang button,.sugg button,.last,.btn{transition:background-color .12s ease,transform .16s var(--ease-out)}
+.row:active,.item:active,.warn:active,.sugg button:active,.last:active{background:var(--surface-2);transform:scale(.985)}
+.iconbtn:active,.x:active,.play:active,.lang button:active,.fold:active{transform:scale(.94)}
+.btn:active{transform:scale(.97)}
+.tabs button:active{color:var(--text)}
 /* hover vain laitteille, joilla on oikea osoitin – kosketus jättäisi hoverin päälle */
 @media (hover:hover) and (pointer:fine){
-  .row:hover{background:var(--surface-2)}
-  .item:hover{background:var(--surface-2)}
-  .iconbtn:hover{color:var(--text);background:var(--surface-2)}
-  .sugg button:hover{background:var(--rule)}
+  .row:hover,.item:hover,.warn:hover{background:var(--surface-2)}
+  .tabs button:hover{color:var(--text-2)}
+  .tabs button[aria-selected="true"]:hover{color:var(--text)}
+  .iconbtn:hover{color:var(--text);background:var(--surface-3)}
+  .sugg button:hover{background:var(--surface-3)}
   .timeline .play:hover{background:var(--surface-2)}
-  .x:hover{background:var(--surface-2);color:var(--text)}
+  .x:hover{background:rgba(255,255,255,.08);color:var(--text)}
+  .lang button[aria-pressed="false"]:hover{color:var(--text-2)}
+  .last:hover{background:var(--surface-3)}
+  .btn:hover{background:#2e2e2e}
+  .btn.ghost:hover{background:var(--surface-2);color:var(--text)}
 }
-@media (prefers-reduced-motion:reduce){.panel{transition:none}}
+@media (prefers-reduced-motion:reduce){
+  .panel,.panel.on{transition:opacity .15s ease}
+  .row:active,.item:active,.warn:active,.iconbtn:active,.x:active,.play:active,.lang button:active,.last:active{transform:none}
+}
+@media (prefers-contrast:more){
+  :root{--line:rgba(255,255,255,.22);--line-2:rgba(255,255,255,.3);--text-3:var(--text-2)}
+}
 </style>
 </head>
 <body>
@@ -270,10 +345,10 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
         <button data-lang="fi" aria-pressed="true">FI</button><button data-lang="en" aria-pressed="false">EN</button></div></div>
   </header>
   <div class="tabs" role="tablist">
-    <button role="tab" id="tab-map" aria-controls="p-map" aria-selected="true"></button>
-    <button role="tab" id="tab-route" aria-controls="p-route" aria-selected="false"></button>
-    <button role="tab" id="tab-worse" aria-controls="p-worse" aria-selected="false"></button>
-    <button role="tab" id="tab-roads" aria-controls="p-roads" aria-selected="false"></button>
+    <button role="tab" id="tab-map" aria-controls="p-map" aria-selected="true"><span>Kartta</span></button>
+    <button role="tab" id="tab-route" aria-controls="p-route" aria-selected="false"><span>Reitti</span></button>
+    <button role="tab" id="tab-worse" aria-controls="p-worse" aria-selected="false"><span>Liukastumassa</span><span class="badge num" hidden></span></button>
+    <button role="tab" id="tab-roads" aria-controls="p-roads" aria-selected="false"><span>Tiet</span></button>
   </div>
   <div class="tabpanel" id="p-map" role="tabpanel" aria-labelledby="tab-map">
     <div class="sec explain"><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></div>
@@ -284,13 +359,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
     <div class="rform">
       <div class="field"><label for="from" data-t="from"></label>
-        <div class="in"><input id="from" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-from">
-          <button class="iconbtn" id="locate" type="button"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 .8v2.6M8 12.6v2.6M.8 8h2.6M12.6 8h2.6" stroke="currentColor" stroke-width="1.5"/></svg></button></div>
+        <div class="in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="from" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-from">
+          <button class="iconbtn" id="locate" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <ul class="sugg" id="sugg-from" role="listbox" hidden></ul></div>
       <div class="field"><label for="to" data-t="to"></label>
-        <div class="in"><input id="to" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-to"></div>
+        <div class="in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="to" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="sugg-to"></div>
         <ul class="sugg" id="sugg-to" role="listbox" hidden></ul></div>
-      <div class="rbtns"><span id="rstatus" role="status"></span><button id="rclear" type="button" hidden data-t="clearRoute"></button></div>
+      <div class="rbtns"><span id="rstatus" role="status"></span><button id="rclear" class="btn ghost" type="button" hidden data-t="clearRoute"></button></div>
     </div>
     <div id="rresult"></div>
   </div>

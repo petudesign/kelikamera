@@ -677,3 +677,73 @@ Myöhemmin testataan, näkyykö ohut kerros kuvissa; jos malli erottaa sen, siit
 
 **Ensimmäinen laskenta (paikalliset ajot):** lumi 0 käyttökelpoista kuvaa, 10 ohutta (7 kameraa); jää 4 kuvaa
 (kitka 0,11, oikeaa jäätä). Talviluokkien kertymä on siis hitaampi kuin pelkästä luokasta näyttäisi.
+
+## 2026-11-11 · UI v4: yhtenäinen komponenttijärjestelmä paneeleille
+
+**Lähtökohta:** käyttäjän mukaan paneelit näyttivät vielä "AI-tehdyiltä". Syyt koodista: litteät pinnat 1 px:n
+reunoilla ilman korkeutta, kolme eri kulmasädettä sekaisin (4/2/1 px), sisennykset vaihtelivat (14/16/20 px), jokainen
+lista oli tehty erikseen ja tilaotsikossa oli paksu 6 px:n värireuna.
+
+**Lähteet:** ui-ux-pro-max (Swiss/dashboard-tyyli, tiheä asettelu, sääntö "yhtenäinen varjoasteikko"; tietokannasta ei
+löytynyt osumaa tummien pintojen korkeudelle, joten käytettiin skillin yleissääntöä) sekä Emil Kowalskin
+`emil-design-eng`, `apple-design` ja `ui-cheatsheet` (luettu dokumentaationa, mitään ei asennettu): painallukseen
+`scale(.97–.985)`, omat ease-out-käyrät, hover vain osoittimelle, isompi pinta = syvempi varjo, sisäkkäiset kulmat,
+tiukempi kirjainväli isoissa otsikoissa, `prefers-contrast` ja vähennetty liike.
+
+**Päätös (CSS-tokenit `site/index.html`):**
+- **Pinnat:** pohja, kelluva kortti, upotettu ryhmä ja korostus (`--bg`, `--surface`, `--surface-2`, `--surface-3`).
+  Reunat ovat läpikuultavia hiusviivoja (`--line`), eivät kiinteitä harmaita viivoja.
+- **Korkeus kolmella tasolla:** `--elev-1` (aikajana, karttapainikkeet), `--elev-2` (kortti, paneeli), `--elev-3`
+  (ehdotuslista, karttavihje). Jokainen = hiusviiva + yläreunan heikko valo + kerrostetut pehmeät varjot.
+- **Kulmat:** 14 / 10 / 8 / 5 / 3 px; sisempi pinta on ulompaa pienempi pehmusteen verran.
+- **Yksi listarivi** kaikille listoille (selite, Liukastumassa, tiet, reitti, varoitukset): pyöristetty korostus
+  hoverissa ja painalluksessa, erotinviiva alkaa tekstin kohdalta.
+- **Upotetut ryhmät:** reitin yhteenveto, kameran lukemat ja "ei mittausta" -selitys ovat omia ryhmiään.
+- **Tilaotsikko:** luokan väri hehkuu otsikon taustassa (13 %), paksu reunapalkki poistettiin.
+- **Segmentoitu FI/EN-valitsin, välilehtien ohut ilmaisin, hiusviivareunainen kuva, MapLibren painikkeet ja vihjeet
+  samoilla pinnoilla.**
+- **Värimerkit ympyröiksi** kuten kartan pisteet: valkoinen "lumi"-neliö luettiin valintaruutuna.
+
+**Jätettiin:** lasimainen läpikuultavuus (`backdrop-filter`). Apple-ohje suosittelee sitä kelluville paneeleille, mutta
+käyttäjä on aiemmin torjunut lasikortit, ja kartan päällä läpikuultavuus heikentäisi lukemien luettavuutta.
+Fira Code / vaalea palettiehdotus (ui-ux-pro-max) ei sovi aiempiin päätöksiin (ei tasalevyistä fonttia, tumma kartta).
+
+**Tarkistus:** kuvakaappaukset työpöydällä, 390 px ja 320 px (myös hajota-UI-data). Lighthouse pysyi 100/100/100/100
+molemmissa (yksi mobiiliajo antoi 85, uusinnat 100 ja 100: mittausvaihtelua). Ennen/jälkeen: `docs/progress/2026-11-11/`.
+
+## 2026-11-11 · UI v5: mapcn:n visuaalinen kieli (Geist, neutraalit harmaat, ikonit)
+
+**Lähtökohta:** v4:n jälkeen käyttäjän mukaan komponentit näyttivät yhä "AI-töherrykseltä, fonteista lähtien".
+Vertailukohdiksi mapcn.dev (MapLibre-komponentit Reactille, shadcn/Tailwind) ja Dribbblen Map UI -tagi.
+
+**Havainnot mapcn:stä** (esikatselukuvat ja lähdekoodi GitHubista, AnmolSaini16/mapcn):
+- Fontti Geist; täysin neutraalit harmaat (#0a0a0a, #171717, #262626, #a1a1a1), ei sinertävää "slate"-sävyä.
+- Ohuet Lucide-ikonit tietoriveillä; data itse komponenttina (rivin taustana osuuden mittainen täyttöpalkki);
+  selkeä painikehierarkia (täytetty / ääriviivainen / haamu); kartan vihje tummana kuplana.
+
+**Päätös: visuaalinen kieli nykyiseen sivuun, ei Reactia.** mapcn:n komponentit vaativat Reactin, Tailwindin ja
+shadcn:n. Ulkoasu tulee tokeneista ja komponenttien mallista, ei kehyksestä, joten sama ilme saadaan ilman
+uudelleenkirjoitusta, käännösvaihetta ja raskaampaa sivua. Sivu pysyy kehyksettömänä (vrt. päätös Vaulista).
+
+**Muutokset:**
+- **Fontti Fira Sans → Geist** (OFL, Google Fonts). Fira Sans oli ui-ux-pro-maxin vakiosuositus "dashboardille",
+  ja juuri se teki ilmeestä geneerisen.
+- **Harmaat neutraaleiksi:** `--bg #0a0a0a`, `--surface #151515`, `--surface-2 #1c1c1c`, `--surface-3 #262626`,
+  teksti `#fafafa / #a3a3a3 / #8c8c8c` (kaikki ≥ 4,5:1 pinnoillaan). Kartan maski ja reunat samaan sävyyn.
+- **Lucide-ikonit** upotettuina SVG-polkuina (`ICON` + `ic()` app.js:ssä, ISC-lisenssi, ei ajonaikaista kirjastoa):
+  mittausaika, asema ja etäisyys tilaotsikossa; kitka, tien ja ilman lämpötila, vesi, lumi ja jää lukemissa;
+  kamera kuvatekstissä; varoituskolmio varoituksissa ja reitillä; haku-ikoni kentissä; viimeisin reitti, ulkoinen
+  linkki, sulje, toisto ja tauko.
+- **Selite:** 2 px:n osuusviiva → rivin taustana osuuden mittainen täyttö luokan värillä (analytics-listojen malli).
+- **Painikkeet:** `.btn` (pinta + hiusviiva) ja `.btn.ghost`. "Näytä varoitukset", "Kaikki varoitukset ↗" ja
+  "Tyhjennä reitti" olivat alleviivattuja tekstilinkkejä.
+- **Kartan vihje** kuplaksi värimerkillä: nimi + luokka.
+
+**Löydös Lighthousesta:** Geistillä Liukastumassa-välilehti oli sivun suurin tekstielementti, ja koska se piirrettiin
+uudelleen datan latauduttua, mobiilin LCP nousi 1,5 s → 6,9 s (suorituskyky 77). Korjaus: välilehtien tekstit valmiina
+HTML:ssä, ja niitä päivitetään vain kielen vaihtuessa; luku on oma elementtinsä. LCP takaisin 1,5 s, pisteet
+100/100/100/100 mobiilissa ja työpöydällä.
+
+**Jätettiin:** isoilla kirjaimilla harvennetut mikro-otsikot (mapcn:n analytics-lohkoissa; torjuttu jo UI v2:ssa);
+React-siirto; ikonit välilehdille (tila ei riitä mobiilissa). **Avoin:** puhelimessa reittilomake ja yhteenveto eivät
+mahdu kortin 52 %:n korkeuteen; lomakkeen voisi tiivistää reitin löydyttyä.

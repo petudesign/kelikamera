@@ -51,3 +51,14 @@ liikennesäävaroitukset ja englanti. Luvut eivät muuttuneet (malli ei vielä k
 ![Liikennesäävaroitus](docs/progress/2026-11-09/ui-v3-varoitus.png)
 
 <img src="docs/progress/2026-11-09/ui-v3-mobiili-liukastumassa.png" width="300" alt="Mobiili, Liukastumassa">
+
+### 2026-11-11 · UI-kierrokset ja paneelien uusi ilme (v4)
+
+Hajotustesti, viisi persoona-arviota ja Lighthouse (mobiili 82 → 100, saavutettavuus 90 → 100), sitten yhtenäinen
+komponenttijärjestelmä paneeleille. Luvut eivät muuttuneet (malli ei vielä käytössä).
+
+| Ennen (v3) | Jälkeen (v4) |
+|---|---|
+| ![](docs/progress/2026-11-11/ui-v3-ennen-desktop.png) | ![](docs/progress/2026-11-11/ui-v4-desktop.png) |
+
+<img src="docs/progress/2026-11-11/ui-v3-ennen-mobiili.png" width="260" alt="Mobiili ennen"> <img src="docs/progress/2026-11-11/ui-v4-mobiili.png" width="260" alt="Mobiili jälkeen">
