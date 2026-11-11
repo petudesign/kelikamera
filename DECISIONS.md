@@ -499,3 +499,65 @@ käyttäjältä tunnuksen ja GitHub-tokenin. Otetaan käyttöön, jos tunnin aja
 - `TIENPINNAN_TILA_1`:n koodisto (3, 10). Kysytään tarvittaessa Digitrafficin Google-ryhmästä.
 - Etäisyysraja kameran ja aseman välille.
 - Kannattaako keruuta tihentää, kun keli muuttuu nopeasti (esim. lämpötila nollan tuntumassa)?
+
+## 2026-11-11 · Aikajanalla valitun hetken kamerakuva
+
+**Löydös:** käyttäjä valitsi aikajanalta klo 3 ja avasi kameran (vt 8 Mustasaari), joka oli silloin punainen. Kuva oli
+kuitenkin klo 10.13, eli väri ja kuva eivät olleet samalta hetkeltä. Digitrafficilla on kelikameroille 24 h kuvahistoria
+(`/api/weathercam/v1/stations/{id}/history`): jokaisesta kuvakulmasta kuva noin 10 min välein ottoaikoineen. Rajapinta
+sallii selainkutsut (CORS `*`), ja vanhat kuvat aukeavat suoraan `versionId`-osoitteista.
+
+**Päätös:** kun aikajana on menneessä hetkessä, kamerapaneeli hakee kameran kuvahistorian ja näyttää valittua hetkeä
+lähimmän kuvan ottoaikoineen ("otettu 02.55"). Jos lähin kuva on yli 20 min päässä valitusta hetkestä (esim. aikajanan
+vanhin tunti on jo historian ulkopuolella), ero kerrotaan: "otettu 11.45 (2 h valitusta hetkestä)". Historia haetaan kerran
+kameraa kohden ja päivitetään enintään 10 min välein, joten aikajanan selaus ja toisto eivät kuormita rajapintaa.
+Jos haku epäonnistuu, näytetään tuorein kuva kuten ennenkin, ja siitä kerrotaan ("tuorein kuva, ei valitulta hetkeltä").
+
+**Jätettiin:** kuvien tallennus sivun dataan rakennusvaiheessa. Se ei ole tarpeen, koska selain saa historian suoraan,
+ja sivun data pysyy pienenä. Myös seuraavien kuvien esilataus jätettiin pois, kunnes toisto osoittautuu tökkiväksi.
+
+**Seuraus keruulle (suunnitteilla, ei vielä tehty):** kuvahistoria (~10 min) ja anturihistoria (5 min) ulottuvat
+molemmat 24 h taaksepäin. Keräin voi siis hakea jälkikäteen kuvat tasatunneilta ja yhdistää ne samalla hetkellä
+mitattuun anturiarvoon. Silloin GitHubin pudottama ajo ei enää tarkoita menetettyä dataa (riittää, että yksi ajo menee
+läpi vuorokaudessa), yökuvat saadaan talteen ja 30 min kuva–anturi-ongelma poistuu. Tämän takia ulkoista ajastinta
+(cron-job.org) tai itseään käynnistävää työnkulkua ei toistaiseksi oteta käyttöön. Huom: 10.11.–11.11. tunnin ajastus
+käynnistyi 21 tunnissa vain 3 kertaa.
+
+## 2026-11-11 · Keruu kiinteistä keruuhetkistä historian avulla, talvitihennys
+
+**Lähtökohta:** GitHub käynnisti tunnin ajastuksen 10.–11.11. vain 3 kertaa 21 tunnissa. Keruu riippui siitä, milloin
+ajo sattui menemään läpi (välit 5–24 h), ja 30 min kuva–anturi-sääntö hylkäsi paljon kuvia, koska kamerat kuvaavat
+usein vain kerran tunnissa. Digitrafficin kuvahistoria (kaikki kamerat yhdellä haulla, ~10 min välein) ja
+anturihistoria (yksi haku per asema, kaikki anturit 5 min välein) ulottuvat ~23 h taakse.
+
+**Päätös:**
+- **Kiinteät keruuhetket**: joka 3. tasatunti UTC (00, 03, …, 21). Jokainen tunnin ajo tarkistaa Hugging Facesta, mitkä
+  hetket viimeiseltä 22 h puuttuvat, ja hakee ne kaikki kerralla (yksi commit). Data ei katoa, kunhan yksi ajo menee
+  läpi vuorokaudessa.
+- **Kuva**: keruuhetkeä lähin kuva, enintään 10 min päässä. **Anturit**: kuvan ottohetkeä lähin arvo jokaiselle
+  anturille, enintään 10 min päässä, tallennetaan suoraan kuvan tietoihin (`sensors`). Testissä kuva oli keskimäärin
+  2,5 min (enintään 4,8 min) keruuhetkestä ja optinen anturi 1,1 min (enintään 2,4 min) kuvasta. Tunnisteiden aikaraja
+  on uudessa muodossa 10 min (vanha 30 min koskee vain vanhoja ajoja).
+- **Talvitihennys**: muina tasatunteina haetaan vain kamerat, joiden lähimmällä asemalla on silloin lunta, jäätä,
+  kuuraa tai sohjoa (optinen koodi 5, 6, 7, 9) tai tienpinta −2…+2 °C. Katto 250 kuvaa per hetki, lumi/jää/kuura ensin.
+  Juuri nämä luokat puuttuvat opetusdatasta. Testipäivänä (10.–11.11.) talvihetkissä oli 47–147 kuvaa.
+- **Tyhjäkin talvihetki tallennetaan** (manifest + anturit, ei kuvia), jotta sitä ei tarkisteta joka tunti uudelleen
+  eikä Digitrafficia kuormiteta turhaan (~390 asemahakua per tarkistus).
+- **Ennusteet** eivät ole historiassa: ne haetaan ajohetkeltä ja tallennetaan ajon uusimpaan tiedostoon
+  (`forecastsFetchedAt`). Niiden väli siis vaihtelee edelleen ajojen mukaan; 3 päivän riskimallille riittää.
+- **Tiedostomuoto 2**: `<keruuhetki>.tar`, manifestissa `format`, `slot`, `kind` (grid/winter) ja `collectedAt`.
+  Vanhat tiedostot pysyvät käyttökelpoisina: `labels.py`, `count.py` ja `peek.py` lukevat molempia. Vanhan muodon ajo
+  alle 30 min päässä ruudukkohetkestä kattaa sen, ettei siirtymässä synny tuplia.
+
+**Datamäärä**: ruudukko ~40 Mt × 8 = 320 Mt/pv, talvitihennys testipäivänä ~100 Mt/pv, katon kanssa enintään ~200 Mt/pv.
+Talvi (~140 pv): noin 60 Gt, pahimmillaan ~73 Gt, eli alle Hugging Facen 100 Gt:n. Ajo: ~1 min ja ~0,9 Gt muistia
+täydellä kamerajoukolla ennen kuvien latausta; ensimmäinen ajo voi hakea ~23 h kerralla, joten aikaraja nostettiin 40 min:iin.
+
+**Jätettiin:**
+- *Kuvat tunnin välein kaikista kameroista*: ~115 Gt talvessa, yli tilan, ja peräkkäiset kuvat samasta kamerasta ovat
+  lähes samoja. Tihennys kohdistetaan sinne, missä harvinaiset luokat ovat.
+- *Ulkoinen ajastin tai itseään käynnistävä työnkulku*: tarpeeton, kun historia paikkaa pudonneet ajot.
+- *Kaikkien kuvakulmien keruu*: ennallaan, yksi kulma per kamera (tienpinta, jos on).
+
+**Riski**: jos GitHub ei käynnistä yhtään ajoa ~23 tuntiin, väliin jäävät hetket menetetään. Seurataan tiedostojen
+väleistä; varasuunnitelma on edelleen ulkoinen ajastin.

@@ -74,10 +74,12 @@ def main() -> None:
     reasons = collections.Counter()
     dist = {}
     surface_only = 0
+    kinds = collections.Counter()
 
     for path in tars:
         t = tarfile.open(path)
         meta = json.load(t.extractfile("manifest.json"))
+        kinds[meta.get("kind", "vanha ajo")] += 1
         stations = station_index(json.loads(gzip.decompress(t.extractfile("weather.json.gz").read())))
         for item in meta["items"]:
             if not item.get("surfaceView"):
@@ -98,7 +100,7 @@ def main() -> None:
             if lab["friction"] is not None:
                 c["friction"].append(lab["friction"])
 
-    print(f"Ajoja: {len(tars)} · tienpintakuvia: {surface_only}\n")
+    print(f"Ajoja: {len(tars)} ({', '.join(f'{k} {n}' for k, n in kinds.most_common())}) · tienpintakuvia: {surface_only}\n")
     print(f"{'luokka':<11}{'kuvia':>7}{'kameroita':>11}{'yö (IR)':>9}{'kitka med.':>12}  valmis?")
     summary = {}
     for cls in CLASSES:
@@ -120,7 +122,7 @@ def main() -> None:
               f"90 % alle {q(.9):.1f} km, pisin {d[-1]:.1f} km")
 
     (OUT / "counts.json").write_text(json.dumps(
-        {"runs": len(tars), "classes": summary, "rejected": dict(reasons),
+        {"runs": len(tars), "kinds": dict(kinds), "classes": summary, "rejected": dict(reasons),
          "camera_station_km": {"median": q(.5), "p90": q(.9)} if dist else None},
         ensure_ascii=False, indent=1))
 

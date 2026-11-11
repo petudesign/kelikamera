@@ -2,8 +2,9 @@ name: Keruu
 
 on:
   schedule:
-    # Joka tunti: sivu päivittyy tunnin välein, ja kuvat kerätään, kun edellisestä keruusta on yli 2,5 h.
-    # GitHub pudottaa ajastettuja ajoja ruuhkassa, joten tiheämpi ajastus paikkaa aukot.
+    # Joka tunti: sivu päivittyy, ja keräin hakee Digitrafficin ~23 h historiasta kaikki puuttuvat
+    # keruuhetket (joka 3. tasatunti + talvitihennys). GitHub pudottaa ajastettuja ajoja, mutta data
+    # ei katoa, kunhan yksi ajo menee läpi vuorokaudessa.
     - cron: "17 * * * *"      # minuutilla 17 (tasatunnit ovat GitHubissa ruuhkaisia)
   workflow_dispatch:          # käsin käynnistys Actions-välilehdeltä
 
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40         # ensimmäinen ajo voi hakea ~23 h kerralla
     steps:
       - uses: actions/checkout@v4
 
@@ -37,9 +38,9 @@ jobs:
           key: cameras-${{ github.run_id }}
           restore-keys: cameras-
 
-      - name: Kerää ja lataa Hugging Faceen (jos on aika)
+      - name: Hae puuttuvat keruuhetket ja lataa Hugging Faceen
         id: collect
-        run: python collector/collect.py --if-due 2.5
+        run: python collector/collect.py
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_REPO: ${{ vars.HF_REPO }}

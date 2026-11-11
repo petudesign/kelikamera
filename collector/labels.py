@@ -37,7 +37,8 @@ CLASS_OF_CODE = {
 }
 CLASSES = ["kuiva", "kostea", "märkä", "luminen", "jää/kuura"]
 
-MAX_SENSOR_GAP_MIN = 30  # anturimittaus enintään näin kaukana kuvan ajasta
+MAX_SENSOR_GAP_MIN = 30  # vanha muoto: anturimittaus (ajohetkeltä) enintään näin kaukana kuvan ajasta
+MAX_SENSOR_GAP_MIN_V2 = 10  # format 2: anturiarvo haettu historiasta kuvan ottohetkeltä
 
 
 def _t(s: str | None) -> datetime | None:
@@ -58,7 +59,12 @@ def station_index(weather_raw: dict) -> dict[int, dict[str, dict]]:
 def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
     """Tunniste yhdelle manifestin kuvalle. Palauttaa aina dictin; 'class' None = ei käyttökelpoinen."""
     out = {"class": None, "reason": None}
-    s = stations.get(item.get("weatherStation"))
+    if "sensors" in item:  # format 2: anturit kuvan ottohetkellä suoraan manifestissa
+        s = {k: {"value": v.get("value"), "time": _t(v.get("measuredTime"))} for k, v in item["sensors"].items()}
+        max_gap = MAX_SENSOR_GAP_MIN_V2
+    else:
+        s = stations.get(item.get("weatherStation"))
+        max_gap = MAX_SENSOR_GAP_MIN
     if not s:
         out["reason"] = "ei asemadataa"
         return out
@@ -82,7 +88,7 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
         out["reason"] = "ei optista anturia"
         return out
     img_t = _t(item.get("measuredTime"))
-    if img_t and opt["time"] and abs((img_t - opt["time"]).total_seconds()) > MAX_SENSOR_GAP_MIN * 60:
+    if img_t and opt["time"] and abs((img_t - opt["time"]).total_seconds()) > max_gap * 60:
         out["reason"] = "anturi ja kuva eri aikaan"
         return out
     code = int(opt["value"])

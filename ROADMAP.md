@@ -9,7 +9,7 @@ Tila: ✅ valmis · 🔨 työn alla · ⏳ sovittu, ei aloitettu
 
 | | Ominaisuus | Huom. |
 |---|---|---|
-| ✅ | Keruu 3 h välein (GitHub Actions → Hugging Face) | |
+| ✅ | Keruu 3 h keruuhetkistä Digitrafficin historiasta + talvitihennys (GitHub Actions → Hugging Face) | 2026-11-11 alkaen |
 | ✅ | Tunnisteet optisesta kelianturista + luokkalaskuri | |
 | ✅ | Karttasivu anturidatalla, rajattu Suomeen | |
 | ✅ | Paneelien uusi ilme (UI v2) | |

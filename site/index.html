@@ -318,7 +318,7 @@ const STR={
   frictionDrop:(a,b)=>`kitka ${a} → ${b}`,
   road:"Tie",chooseRoad:"Valitse tie",roadStart:"Tien alku",roadEnd:"Tien loppu",cams:n=>`${n} kameraa`,worst:"Pahin kohta",
   measured:"Mitattu",station:"asema",aiSoon:"Tekoälyarvio tulossa",close:"Sulje",
-  camNow:"Kamerakuva · Fintraffic",camTaken:t=>`otettu ${t}`,camLatest:"tuorein kuva, ei valitulta hetkeltä",friction:"Kitka µ",slippery:"Liukas · jää ~0,1",grippy:"Pitävä · kuiva 0,82",
+  camNow:"Kamerakuva · Fintraffic",camTaken:t=>`otettu ${t}`,camLatest:"tuorein kuva, ei valitulta hetkeltä",camLoading:"haetaan valitun hetken kuvaa…",camGap:t=>`${t} valitusta hetkestä`,friction:"Kitka µ",slippery:"Liukas · jää ~0,1",grippy:"Pitävä · kuiva 0,82",
   roadT:"Tien lämpötila",airT:"Ilman lämpötila",water:"Vesi",snow:"Lumi",ice:"Jää",
   noMeasure:"Ei mitattua keliä",far:km=>`Lähin tiesääasema on ${km} päässä, eikä sen mittaus kerro tämän kameran kelistä.`,
   nosensor:"Lähimmällä tiesääasemalla ei ole tienpinnan kelianturia.",aiNote:"Tähän tulee tekoälyn arvio kamerakuvasta.",
@@ -344,7 +344,7 @@ const STR={
   frictionDrop:(a,b)=>`friction ${a} → ${b}`,
   road:"Road",chooseRoad:"Choose a road",roadStart:"Road start",roadEnd:"Road end",cams:n=>`${n} cameras`,worst:"Worst spot",
   measured:"Measured",station:"station",aiSoon:"AI estimate coming",close:"Close",
-  camNow:"Camera image · Fintraffic",camTaken:t=>`taken ${t}`,camLatest:"latest image, not from the selected time",friction:"Friction µ",slippery:"Slippery · ice ~0.1",grippy:"Grippy · dry 0.82",
+  camNow:"Camera image · Fintraffic",camTaken:t=>`taken ${t}`,camLatest:"latest image, not from the selected time",camLoading:"loading the image from the selected time…",camGap:t=>`${t} from the selected time`,friction:"Friction µ",slippery:"Slippery · ice ~0.1",grippy:"Grippy · dry 0.82",
   roadT:"Road temperature",airT:"Air temperature",water:"Water",snow:"Snow",ice:"Ice",
   noMeasure:"No measured conditions",far:km=>`The nearest road weather station is ${km} away, so its reading doesn't describe this camera's road.`,
   nosensor:"The nearest road weather station has no road surface sensor.",aiNote:"An AI estimate from the camera image will appear here.",
@@ -800,11 +800,38 @@ async function camTime(c){
     }
   }catch(e){}
 }
+// valitun hetken kuva kameran 24 h kuvahistoriasta (Digitraffic, ~10 min välein)
+const HIST={};  // {kamera: {at: haettu ms, list: [{t, url}] | null}}
+const presetOf=c=>c.img.split("/").pop().replace(".jpg","");
+function loadHist(c){
+  const h=HIST[c.id];
+  if(h&&(h.p||Date.now()-h.at<10*6e4)) return h.p||Promise.resolve();
+  const rec={at:Date.now(),list:h?h.list:undefined};
+  rec.p=fetch(`https://tie.digitraffic.fi/api/weathercam/v1/stations/${c.id}/history`)
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(d=>{const pr=(d.presets||[]).find(x=>x.id===presetOf(c));
+      rec.list=(pr&&pr.history||[]).map(x=>({t:Date.parse(x.lastModified),url:x.imageUrl})).filter(x=>x.t)})
+    .catch(()=>{rec.list=rec.list||null})
+    .finally(()=>{rec.at=Date.now();delete rec.p});
+  HIST[c.id]=rec; return rec.p;
+}
+function shotAt(c,at){
+  const l=HIST[c.id]&&HIST[c.id].list; if(!l||!l.length) return l===undefined?undefined:null;
+  return l.reduce((a,b)=>Math.abs(b.t-at)<Math.abs(a.t-at)?b:a);
+}
+const fmtGap=ms=>{const m=Math.round(ms/6e4);return m<90?`${m} min`:`${Math.round(m/60)} h`};
 function openCam(id,keep){
   const c=byId[id]; if(!c) return; current={type:"cam",id}; select(id);
   if(isMobile()&&!keep) setCollapsed(true);
   const k=clsAt(c), col=COLORS[k], L=T(), past=slot!==24;
   const fr=past?(c.hf?c.hf[slot]:null):c.friction;
+  const at=past?Date.parse(DATA.times[slot]):0, shot=past?shotAt(c,at):null;
+  if(past&&(shot===undefined||!HIST[c.id]||Date.now()-HIST[c.id].at>=10*6e4)){
+    const s0=slot; loadHist(c).then(()=>{ if(current&&current.id===c.id&&slot===s0&&shotAt(c,at)!==undefined) openCam(c.id,true) }); }
+  const src=!past?`${c.img}?t=${Math.floor(Date.now()/6e4)}`:shot?shot.url:shot===null?c.img:"";
+  const gap=shot?Math.abs(shot.t-at):0;
+  const cap=!past?"":shot?` · ${L.camTaken(fmtClock(new Date(shot.t).toISOString()))}${gap>20*6e4?` (${L.camGap(fmtGap(gap))})`:""}`
+    :shot===null?`<br>${L.camLatest}`:`<br>${L.camLoading}`;
   const sub=k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
     :`${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span> · ${L.station} ${c.st} · <span class="num">${num(c.km," km")}</span>`;
   const p=document.getElementById("panel");
@@ -813,8 +840,8 @@ function openCam(id,keep){
     <div class="status" style="--c:${col}"><div><b>${L.cls[k]}</b><small>${sub}</small></div>
       <button class="x" aria-label="${L.close}">${X}</button></div>
     <div class="place"><h2>${esc(nameOf(c))}</h2><p>${c.road?L.road+" "+c.road+" · ":""}${esc(c.mun||"")}</p></div>
-    <figure class="shot"><img src="${c.img}?t=${Math.floor(Date.now()/6e4)}" alt="${esc(nameOf(c))}">
-      <figcaption>${L.camNow}${c.view?" · "+esc(c.view):""}<span id="camtime"></span>${past?`<br>${L.camLatest}`:""}</figcaption></figure>
+    <figure class="shot"><img ${src?`src="${src}" alt="${esc(nameOf(c))}"`:'alt=""'}>
+      <figcaption>${L.camNow}${c.view?" · "+esc(c.view):""}<span id="camtime"></span>${cap}</figcaption></figure>
     ${k!=="ei mittausta"?`<dl class="read">
         <div class="kv joined"><dt>${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
         ${past?"":`<div class="kv"><dt>${L.roadT}</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
@@ -829,7 +856,7 @@ function openCam(id,keep){
       <div class="strip-t"><span>${fmtClock(DATA.times[0])}</span><span>${L.now}</span></div></div>`:""}
   </div>`;
   p.classList.add("on");
-  camTime(c);
+  if(!past) camTime(c);
 }
 function openWarn(i,keep){
   const w=WARN[i]; if(!w) return; current={type:"warn",i}; select("");

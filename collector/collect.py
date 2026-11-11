@@ -1,17 +1,22 @@
 """Kelikamera AI – keräin.
 
-Yksi ajo = yksi tar-tiedosto, jossa:
-  images/<presetId>.jpg   kelikameran kuva pienennettynä (leveys IMG_WIDTH)
-  manifest.json           jokaisen kuvan metatiedot + lähimmän sääaseman id
-  weather.json.gz         kaikkien tiesääasemien raaka-anturidata samalta hetkeltä
-  forecast_road.json.gz   Digitrafficin tiesääennuste tieosuuksille (0, 2, 4, 6, 12 h)
-  forecast_fmi.json.gz    Ilmatieteen laitoksen ennuste jokaiselle tiesääasemalle, 3 h välein 4 vrk
+Kuvat ja anturit haetaan Digitrafficin ~23 h historiasta kiinteille keruuhetkille, joten ajon
+käynnistymisaika ei vaikuta dataan. Jokainen ajo hakee kaikki puuttuvat hetket:
+  ruudukko  joka 3. tasatunti UTC, kaikki kamerat
+  talvi     muut tasatunnit, vain kamerat, joiden asemalla on lunta/jäätä/kuuraa tai tie nollan tuntumassa
+
+Yksi keruuhetki = yksi tar-tiedosto <hetki>.tar (format 2), jossa:
+  images/<presetId>.jpg   hetkeä lähin kuva (±10 min) pienennettynä (leveys IMG_WIDTH)
+  manifest.json           kuvien metatiedot, ottoaika ja aseman anturit kuvan ottohetkellä (±10 min)
+  weather.json.gz         kameroiden lähimpien asemien kaikki anturit keruuhetkellä
+  forecast_*.json.gz      ennusteet ajohetkeltä, vain ajon uusimmassa tiedostossa (ei saatavilla historiasta)
 
 Tiedosto tallentuu kansioon out/YYYY/MM/DD/. Jos ympäristössä on HF_TOKEN ja
-HF_REPO, tiedosto ladataan myös Hugging Face -datasettiin (yksityinen).
+HF_REPO, tiedostot ladataan myös Hugging Face -datasettiin (yksityinen), yhtenä committina.
 
 Käyttö:
-  python collector/collect.py              # kaikki kamerat
+  python collector/collect.py              # kaikki puuttuvat hetket, kaikki kamerat
+  python collector/collect.py --dry-run    # mitä haettaisiin
   python collector/collect.py --limit 30   # pikatesti
 """
 from __future__ import annotations
@@ -39,7 +44,18 @@ HEADERS = {
 }
 IMG_WIDTH = 640
 JPEG_QUALITY = 80
-MAX_IMAGE_AGE = timedelta(hours=2)   # vanhempi kuva = kamera jumissa, ei tallenneta
+# Keruuhetket (DECISIONS.md 2026-11-11): kuvat ja anturit haetaan Digitrafficin ~23 h historiasta.
+SLOT_HOURS = 3                         # ruudukkohetki joka 3. tasatunti UTC (00, 03, …, 21)
+SLOT_TOLERANCE = timedelta(minutes=10) # kuva enintään näin kaukana keruuhetkestä
+SENSOR_TOLERANCE = timedelta(minutes=10)  # anturiarvo enintään näin kaukana kuvan ottohetkestä (asemat 5 min välein)
+HISTORY_SPAN = timedelta(hours=22)     # historia ulottuu ~23 h taakse; tunti varmuusvaraa
+SETTLE = timedelta(minutes=15)         # hetken jälkeen odotetaan, että myös sen jälkeinen kuva on olemassa
+OLD_RUN_COVERS = timedelta(minutes=30) # vanhan muodon ajo kattaa näin lähellä olevan ruudukkohetken
+WINTER_CODES = {5, 6, 7, 9}            # talvitihennys: kuura, lumi, jää, sohjo (KELI-koodisto) …
+WINTER_ROAD_T = (-2.0, 2.0)            # … tai tienpinta nollan tuntumassa (°C)
+WINTER_MAX = 250                       # talvihetken kuvakatto (tila: 100 Gt); ensin lumi/jää/kuura, sitten lämpötila
+ITEM_SENSORS = ["OPTISEN_ANTURIN_KELI1", "KITKA1_LUKU", "VEDEN_MÄÄRÄ1", "LUMEN_MÄÄRÄ1", "JÄÄN_MÄÄRÄ1",
+                "TIE_1", "ILMA", "KASTEPISTE", "ILMAN_KOSTEUS", "TIENPINNAN_TILA_1", "SADE_INTENSITEETTI"]
 META_MAX_AGE = timedelta(days=7)     # kameroiden metatiedot muuttuvat harvoin
 META_VERSION = 3                      # nosta, kun metatietoihin lisätään kenttiä
 FMI_WFS = "https://opendata.fmi.fi/wfs"
@@ -48,6 +64,7 @@ FMI_PARAMS = ["Temperature", "DewPoint", "Humidity", "Precipitation1h", "TotalCl
 FMI_HOURS = 96
 FMI_BATCH = 60                        # asemia per pyyntö (URL:n pituus)
 WORKERS = 8
+IMAGE_WORKERS = 16                    # kuvat tulevat Fintraffiicin kuvapalvelimelta
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "cache"
@@ -207,14 +224,131 @@ def fetch_fmi_forecast() -> dict:
     return out
 
 
-# ------------------------------------------------------------------ images --
-def fetch_image(preset_id: str) -> bytes | None:
+# ------------------------------------------------------------------ slots --
+def slot_times(now: datetime) -> list[tuple[datetime, str]]:
+    """Keruuhetket historian kattamalta ajalta: tasatunnit, joista joka kolmas on ruudukkohetki."""
+    first = (now - HISTORY_SPAN).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    out, t = [], first
+    while t <= now - SETTLE:
+        out.append((t, "grid" if t.hour % SLOT_HOURS == 0 else "winter"))
+        t += timedelta(hours=1)
+    return out
+
+
+def stamp_of(t: datetime) -> str:
+    return t.strftime("%Y%m%dT%H%MZ")
+
+
+def existing_stamps(now: datetime) -> list[datetime]:
+    """Jo tallennetut ajot kolmelta viime päivältä (Hugging Face, tai paikallisesti out/)."""
+    days = [now - timedelta(days=d) for d in (2, 1, 0)]
+    names: list[str] = []
+    token, repo = os.environ.get("HF_TOKEN"), os.environ.get("HF_REPO")
+    if token and repo:
+        from huggingface_hub import HfApi
+        api = HfApi(token=token)
+        for day in days:
+            try:
+                names += [f.path.rsplit("/", 1)[-1] for f in
+                          api.list_repo_tree(repo, path_in_repo=day.strftime("data/%Y/%m/%d"), repo_type="dataset")]
+            except Exception:  # päivän kansiota ei vielä ole
+                pass
+    else:
+        for day in days:
+            names += [f.name for f in (OUT / day.strftime("%Y/%m/%d")).glob("*.tar")]
+    return [datetime.strptime(n[:-4], "%Y%m%dT%H%MZ").replace(tzinfo=timezone.utc)
+            for n in names if n.endswith(".tar")]
+
+
+def missing_slots(now: datetime) -> list[tuple[datetime, str]]:
+    have = existing_stamps(now)
+
+    def done(t: datetime, kind: str) -> bool:
+        if kind == "grid":  # vanhan muodon ajo (esim. 06:21) kattaa lähimmän ruudukkohetken
+            return any(abs(h - t) <= OLD_RUN_COVERS for h in have)
+        return t in have
+    return [(t, k) for t, k in slot_times(now) if not done(t, k)]
+
+
+# ---------------------------------------------------------------- history --
+def camera_history() -> dict[str, list[tuple[datetime, str]]]:
+    """{kulma: [(ottoaika, kuvan osoite), …]} kaikista kameroista ~23 h ajalta, yhdellä haulla."""
+    d = get_json("/api/weathercam/v1/stations/history")
+    return {p["id"]: sorted((parse_time(h["lastModified"]), h["imageUrl"]) for h in p.get("history", [])
+                            if h.get("lastModified") and h.get("imageUrl"))
+            for s in d.get("stations", []) for p in s.get("presets", [])}
+
+
+def nearest(series: list[tuple], t: datetime, tol: timedelta):
+    """Lähin (aika, arvo) aikaa t, enintään tol päässä. Sarja aikajärjestyksessä."""
+    i = _bisect(series, t)
+    best = min((series[j] for j in (i - 1, i) if 0 <= j < len(series)),
+               key=lambda x: abs(x[0] - t), default=None)
+    return best if best and abs(best[0] - t) <= tol else None
+
+
+def _bisect(series: list[tuple], t: datetime) -> int:
+    lo, hi = 0, len(series)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if series[mid][0] < t:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def sensor_names() -> dict[int, str]:
+    return {s["id"]: s["name"] for s in get_json("/api/weather/v2/sensors")["sensors"]}
+
+
+def station_snapshots(sid: int, times: set[datetime], frm: datetime, to: datetime,
+                      names: dict[int, str]) -> dict[datetime, dict[str, dict]]:
+    """Aseman kaikki anturit kullakin pyydetyllä hetkellä: {hetki: {anturi: {value, measuredTime}}}.
+    Raaka 5 min sarja (~20 000 arvoa/asema) käsitellään heti, jotta muisti ei kasva."""
     try:
-        r = session.get(f"https://weathercam.digitraffic.fi/{preset_id}.jpg", timeout=30)
+        d = get_json(f"/api/weather/v2/stations/{sid}/data/history"
+                     f"?from={frm:%Y-%m-%dT%H:%M:%SZ}&to={to:%Y-%m-%dT%H:%M:%SZ}")
+    except requests.RequestException as e:
+        print(f"  ! asema {sid}: {e}", file=sys.stderr)
+        return {}
+    series: dict[str, list] = {}
+    for v in d.get("sensorValues", []):
+        if v.get("measuredTime") and v.get("id") in names:
+            series.setdefault(names[v["id"]], []).append((parse_time(v["measuredTime"]), v.get("value")))
+    for x in series.values():
+        x.sort(key=lambda y: y[0])
+    out = {}
+    for t in times:
+        snap = {}
+        for name, x in series.items():
+            hit = nearest(x, t, SENSOR_TOLERANCE)
+            if hit:
+                snap[name] = {"value": hit[1], "measuredTime": hit[0].isoformat()}
+        out[t] = snap
+    return out
+
+
+def winter_rank(snap: dict[str, dict]) -> int | None:
+    """Talvitihennyksen ehto: 0 = optinen anturi näyttää lunta/jäätä/kuuraa, 1 = tie nollan tuntumassa,
+    None = ei talvinen. Pienempi = tärkeämpi, kun kuvakatto tulee vastaan."""
+    code = (snap.get("OPTISEN_ANTURIN_KELI1") or {}).get("value")
+    road = (snap.get("TIE_1") or {}).get("value")
+    if code is not None and int(code) in WINTER_CODES:
+        return 0
+    if road is not None and WINTER_ROAD_T[0] <= road <= WINTER_ROAD_T[1]:
+        return 1
+    return None
+
+
+# ------------------------------------------------------------------ images --
+def fetch_image(url: str) -> bytes | None:
+    try:
+        r = session.get(url, timeout=30)
         r.raise_for_status()
         im = Image.open(io.BytesIO(r.content)).convert("RGB")
-    except Exception as e:  # verkko- tai kuvavirhe: ohitetaan tämä kamera
-        print(f"  ! {preset_id}: {e}", file=sys.stderr)
+    except Exception as e:  # verkko- tai kuvavirhe: ohitetaan tämä kuva
+        print(f"  ! {url.split('?')[0]}: {e}", file=sys.stderr)
         return None
     if im.width > IMG_WIDTH:
         im = im.resize((IMG_WIDTH, round(im.height * IMG_WIDTH / im.width)), Image.LANCZOS)
@@ -224,21 +358,56 @@ def fetch_image(preset_id: str) -> bytes | None:
 
 
 # --------------------------------------------------------------------- run --
-def run(limit: int | None) -> Path:
+def run(limit: int | None, dry_run: bool = False) -> list[Path]:
+    """Hakee puuttuvat keruuhetket historiasta. Palauttaa kirjoitetut tar-tiedostot."""
     started = datetime.now(timezone.utc)
-    stamp = started.strftime("%Y%m%dT%H%MZ")
-    print(f"Ajo {stamp}")
+    slots = missing_slots(started)
+    print(f"Ajo {stamp_of(started)} · puuttuvia keruuhetkiä: "
+          f"{sum(k == 'grid' for _, k in slots)} ruudukko, {sum(k == 'winter' for _, k in slots)} talvi")
+    if not slots:
+        return []
 
     cams = camera_meta(limit)
-    print(f"  kameroita: {len(cams)}")
+    hist = camera_history()
 
-    measured = {
-        p["id"]: p.get("measuredTime")
-        for s in get_json("/api/weathercam/v1/stations/data")["stations"]
-        for p in s.get("presets", [])
-    }
-    # v1 poistuu 2027-04-13, joten käytetään v2:ta (sama rakenne)
-    weather_raw = get_json("/api/weather/v2/stations/data")
+    # 1) kuva per kamera per hetki: lähin enintään SLOT_TOLERANCE päässä
+    picks: dict[datetime, list[tuple[dict, dict, datetime, str]]] = {}
+    for t, _ in slots:
+        picks[t] = []
+        for cam in cams:
+            p = pick_preset(cam)
+            hit = nearest(hist.get(p["id"], []), t, SLOT_TOLERANCE)
+            if hit:
+                picks[t].append((cam, p, hit[0], hit[1]))
+
+    # 2) anturiarvot: keruuhetkellä (aseman tilannekuva + talviehto) ja kunkin kuvan ottohetkellä
+    want: dict[int, set[datetime]] = {}
+    for t, _ in slots:
+        for cam, _, img_t, _ in picks[t]:
+            sid = cam.get("nearestWeatherStationId")
+            if sid is not None:
+                want.setdefault(sid, set()).update((t, img_t))
+    names = sensor_names()
+    frm = min(t for t, _ in slots) - SLOT_TOLERANCE - SENSOR_TOLERANCE
+    with ThreadPoolExecutor(WORKERS) as ex:
+        snaps = dict(zip(want, ex.map(lambda sid: station_snapshots(sid, want[sid], frm, started, names), want)))
+    print(f"  kameroita {len(cams)}, asemia {len(snaps)}")
+
+    # 3) talvihetkiin vain kamerat, joiden asemalla on talvinen tilanne
+    jobs = []
+    for t, kind in slots:
+        if kind == "grid":
+            chosen = picks[t]
+        else:
+            ranked = [(r, x) for x in picks[t]
+                      if (r := winter_rank(snaps.get(x[0].get("nearestWeatherStationId"), {}).get(t, {}))) is not None]
+            chosen = [x for _, x in sorted(ranked, key=lambda y: y[0])[:WINTER_MAX]]
+        # tyhjäkin talvihetki tallennetaan (vain manifest + anturit), jotta sitä ei tarkisteta joka ajossa uudelleen
+        jobs.append((t, kind, chosen))
+        print(f"  {t:%d.%m. %H:%M} {kind:<6} {len(chosen):>4} kuvaa")
+    if dry_run:
+        return []
+
     forecasts, forecast_errors = {}, []
     for name, fn in (("road", fetch_road_forecast), ("fmi", fetch_fmi_forecast)):
         try:
@@ -247,97 +416,82 @@ def run(limit: int | None) -> Path:
             forecast_errors.append(f"{name}: {e}")
             print(f"  ! ennuste {name}: {e}", file=sys.stderr)
 
-    chosen = []
-    skipped = {"stale": 0, "no_time": 0, "failed": 0}
-    for cam in cams:
-        p = pick_preset(cam)
-        t = parse_time(measured.get(p["id"]))
-        if t is None:
-            skipped["no_time"] += 1
-            continue
-        if started - t > MAX_IMAGE_AGE:
-            skipped["stale"] += 1
-            continue
-        chosen.append((cam, p, t))
+    paths = []
+    newest = max(t for t, _, _ in jobs)
+    for t, kind, chosen in jobs:
+        with ThreadPoolExecutor(IMAGE_WORKERS) as ex:
+            images = list(ex.map(lambda c: fetch_image(c[3]), chosen))
+        manifest, failed = [], 0
+        tar_buf = io.BytesIO()
+        with tarfile.open(fileobj=tar_buf, mode="w") as tar:
+            def add(name: str, data: bytes):
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                info.mtime = int(started.timestamp())
+                tar.addfile(info, io.BytesIO(data))
 
-    with ThreadPoolExecutor(WORKERS) as ex:
-        images = list(ex.map(lambda c: fetch_image(c[1]["id"]), chosen))
+            for (cam, p, img_t, _), img in zip(chosen, images):
+                if img is None:
+                    failed += 1
+                    continue
+                sid = cam["nearestWeatherStationId"]
+                at_img = snaps.get(sid, {}).get(img_t, {})
+                add(f"images/{p['id']}.jpg", img)
+                manifest.append({
+                    "preset": p["id"],
+                    "presetName": p.get("name"),
+                    "surfaceView": p.get("directionCode") == "9",
+                    "camera": cam["id"],
+                    "cameraName": cam["name"],
+                    "lat": cam["lat"],
+                    "lon": cam["lon"],
+                    "road": cam["road"],
+                    "municipality": cam["municipality"],
+                    "weatherStation": sid,
+                    "measuredTime": img_t.isoformat(),  # kuvan ottoaika
+                    # aseman anturit kuvan ottohetkellä (lähin arvo, enintään SENSOR_TOLERANCE)
+                    "sensors": {k: at_img[k] for k in ITEM_SENSORS if k in at_img},
+                    "bytes": len(img),
+                })
 
-    manifest = []
-    tar_buf = io.BytesIO()
-    with tarfile.open(fileobj=tar_buf, mode="w") as tar:
-        def add(name: str, data: bytes):
-            info = tarfile.TarInfo(name)
-            info.size = len(data)
-            info.mtime = int(started.timestamp())
-            tar.addfile(info, io.BytesIO(data))
+            # asemien kaikki anturit keruuhetkellä, sama rakenne kuin Digitrafficin /stations/data
+            weather = {"dataUpdatedTime": t.isoformat(), "stations": [
+                {"id": sid, "sensorValues": [{"name": k, **v} for k, v in snaps[sid].get(t, {}).items()]}
+                for sid in snaps]}
+            meta = {
+                "format": 2,
+                "run": stamp_of(t),
+                "slot": t.isoformat(),
+                "kind": kind,
+                "collectedAt": started.isoformat(),
+                "imageWidth": IMG_WIDTH,
+                "images": len(manifest),
+                "skipped": {"failed": failed, "no_image_near_slot": len(cams) - len(picks[t])},
+                "rules": {"imageMaxMin": SLOT_TOLERANCE.seconds // 60,
+                          "sensorMaxMin": SENSOR_TOLERANCE.seconds // 60,
+                          **({"winter": f"optinen koodi {sorted(WINTER_CODES)} tai tie {WINTER_ROAD_T} °C, enintään {WINTER_MAX}"}
+                             if kind == "winter" else {})},
+                "source": "Fintraffic / digitraffic.fi, CC BY 4.0",
+                "items": manifest,
+            }
+            if t == newest:  # ennusteita ei saa historiasta: ne tulevat ajohetkeltä uusimpaan tiedostoon
+                meta["forecastsFetchedAt"] = started.isoformat()
+                meta["forecasts"] = {k: v.get("summary") for k, v in forecasts.items()}
+                meta["forecastErrors"] = forecast_errors
+                for name, data in forecasts.items():
+                    add(f"forecast_{name}.json.gz", gzip.compress(json.dumps(data, separators=(",", ":")).encode()))
+            add("manifest.json", json.dumps(meta, ensure_ascii=False, indent=1).encode())
+            add("weather.json.gz", gzip.compress(json.dumps(weather).encode()))
 
-        for (cam, p, t), img in zip(chosen, images):
-            if img is None:
-                skipped["failed"] += 1
-                continue
-            add(f"images/{p['id']}.jpg", img)
-            manifest.append({
-                "preset": p["id"],
-                "presetName": p.get("name"),
-                "surfaceView": p.get("directionCode") == "9",
-                "camera": cam["id"],
-                "cameraName": cam["name"],
-                "lat": cam["lat"],
-                "lon": cam["lon"],
-                "road": cam["road"],
-                "municipality": cam["municipality"],
-                "weatherStation": cam["nearestWeatherStationId"],
-                "measuredTime": t.isoformat(),
-                "bytes": len(img),
-            })
+        day_dir = OUT / t.strftime("%Y/%m/%d")
+        day_dir.mkdir(parents=True, exist_ok=True)
+        path = day_dir / f"{stamp_of(t)}.tar"
+        path.write_bytes(tar_buf.getvalue())
+        paths.append(path)
+        print(f"  tiedosto: {path.relative_to(ROOT)} ({path.stat().st_size / 1e6:.1f} Mt, {len(manifest)} kuvaa)")
 
-        meta = {
-            "run": stamp,
-            "startedAt": started.isoformat(),
-            "finishedAt": datetime.now(timezone.utc).isoformat(),
-            "imageWidth": IMG_WIDTH,
-            "images": len(manifest),
-            "skipped": skipped,
-            "forecasts": {k: v.get("summary") for k, v in forecasts.items()},
-            "forecastErrors": forecast_errors,
-            "source": "Fintraffic / digitraffic.fi, CC BY 4.0",
-            "items": manifest,
-        }
-        add("manifest.json", json.dumps(meta, ensure_ascii=False, indent=1).encode())
-        add("weather.json.gz", gzip.compress(json.dumps(weather_raw).encode()))
-        for name, data in forecasts.items():
-            add(f"forecast_{name}.json.gz",
-                gzip.compress(json.dumps(data, separators=(",", ":")).encode()))
-
-    day_dir = OUT / started.strftime("%Y/%m/%d")
-    day_dir.mkdir(parents=True, exist_ok=True)
-    path = day_dir / f"{stamp}.tar"
-    path.write_bytes(tar_buf.getvalue())
-
-    secs = (datetime.now(timezone.utc) - started).total_seconds()
-    print(f"  kuvia: {len(manifest)}, ohitettu: {skipped}")
-    print(f"  ennusteet: {meta['forecasts']}" + (f", virheet: {forecast_errors}" if forecast_errors else ""))
-    print(f"  tiedosto: {path.relative_to(ROOT)} ({path.stat().st_size / 1e6:.1f} Mt), {secs:.0f} s")
-    return path
-
-
-def last_collected() -> datetime | None:
-    """Uusimman Hugging Faceen ladatun ajon aika (tämä ja edellinen päivä). None = ei tiedossa."""
-    token, repo = os.environ.get("HF_TOKEN"), os.environ.get("HF_REPO")
-    if not (token and repo):
-        return None
-    from huggingface_hub import HfApi
-    api, now, stamps = HfApi(token=token), datetime.now(timezone.utc), []
-    for day in (now, now - timedelta(days=1)):
-        try:
-            for f in api.list_repo_tree(repo, path_in_repo=day.strftime("data/%Y/%m/%d"), repo_type="dataset"):
-                name = f.path.rsplit("/", 1)[-1]
-                if name.endswith(".tar"):
-                    stamps.append(datetime.strptime(name[:-4], "%Y%m%dT%H%MZ").replace(tzinfo=timezone.utc))
-        except Exception:  # päivän kansiota ei vielä ole
-            pass
-    return max(stamps) if stamps else None
+    print(f"  valmis {(datetime.now(timezone.utc) - started).total_seconds():.0f} s")
+    return paths
 
 
 def set_output(key: str, value: str) -> None:
@@ -346,36 +500,31 @@ def set_output(key: str, value: str) -> None:
             f.write(f"{key}={value}\n")
 
 
-def upload(path: Path) -> None:
+def upload(paths: list[Path]) -> None:
     token, repo = os.environ.get("HF_TOKEN"), os.environ.get("HF_REPO")
+    if not paths:
+        return
     if not (token and repo):
         if os.environ.get("GITHUB_ACTIONS"):
             # Pilvessä puuttuva asetus on virhe: muuten data katoaisi hiljaa.
             raise SystemExit("HF_TOKEN-salaisuus tai HF_REPO-muuttuja puuttuu repon asetuksista")
         print("  (HF_TOKEN/HF_REPO puuttuu – ei ladata Hugging Faceen)")
         return
-    from huggingface_hub import HfApi
+    from huggingface_hub import CommitOperationAdd, HfApi
 
     api = HfApi(token=token)
     api.create_repo(repo, repo_type="dataset", private=True, exist_ok=True)
-    dest = "data/" + str(path.relative_to(OUT))
-    api.upload_file(path_or_fileobj=str(path), path_in_repo=dest, repo_id=repo,
-                    repo_type="dataset", commit_message=f"Keruu {path.stem}")
-    print(f"  ladattu: {repo}/{dest}")
+    ops = [CommitOperationAdd(path_in_repo="data/" + str(p.relative_to(OUT)), path_or_fileobj=str(p)) for p in paths]
+    api.create_commit(repo_id=repo, repo_type="dataset", operations=ops,
+                      commit_message="Keruu " + ", ".join(p.stem for p in paths))
+    print(f"  ladattu: {repo} ({len(paths)} tiedostoa)")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="vain N ensimmäistä kameraa (testi)")
-    ap.add_argument("--if-due", type=float, metavar="H",
-                    help="kerää vain, jos edellisestä keruusta on yli H tuntia (ajastus käynnistyy tunnin välein)")
+    ap.add_argument("--dry-run", action="store_true", help="näytä puuttuvat keruuhetket ja kuvamäärät, älä lataa kuvia")
     args = ap.parse_args()
-    if args.if_due:
-        last = last_collected()
-        if last and datetime.now(timezone.utc) - last < timedelta(hours=args.if_due):
-            print(f"Edellinen keruu {last:%H:%M} UTC, alle {args.if_due} h sitten – ei kerätä nyt.")
-            set_output("collected", "false")
-            raise SystemExit(0)
-        print(f"Keruu on ajankohtainen (edellinen: {last:%Y-%m-%d %H:%M} UTC)." if last else "Edellistä keruuta ei löytynyt – kerätään.")
-    upload(run(args.limit))
-    set_output("collected", "true")
+    written = run(args.limit, args.dry_run)
+    upload(written)
+    set_output("collected", "true" if written else "false")
