@@ -38,7 +38,11 @@ CLASS_OF_CODE = {
 CLASSES = ["kuiva", "kostea", "märkä", "luminen", "jää/kuura"]
 
 MAX_SENSOR_GAP_MIN = 30  # vanha muoto: anturimittaus (ajohetkeltä) enintään näin kaukana kuvan ajasta
-MAX_SENSOR_GAP_MIN_V2 = 10  # format 2: anturiarvo haettu historiasta kuvan ottohetkeltä
+MAX_SENSOR_GAP_MIN_V2 = 10
+# Ohut kerros (DECISIONS.md 2026-11-11): anturi sanoo lumi/jää, mutta kitka on hyvä ja kerros ohut.
+# Luokka säilyy, mutta 'thin' = True, ja ensimmäinen malli jättää nämä luokkakoulutuksen ulkopuolelle.
+THIN_MIN_FRICTION = 0.6
+THIN_MAX_LAYER_MM = 0.1  # format 2: anturiarvo haettu historiasta kuvan ottohetkeltä
 
 
 def _t(s: str | None) -> datetime | None:
@@ -97,4 +101,7 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
         out["reason"] = f"koodi {code} ({OPTICAL_CODES.get(code, 'tuntematon')})"
         return out
     out["class"] = cls
+    layer = max(out.get("ice_mm") or 0, out.get("snow_mm") or 0)
+    out["thin"] = (cls in ("luminen", "jää/kuura") and out.get("friction") is not None
+                   and out["friction"] >= THIN_MIN_FRICTION and layer < THIN_MAX_LAYER_MM)
     return out

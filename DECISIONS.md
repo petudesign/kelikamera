@@ -652,3 +652,28 @@ Mobiilin ensimmäinen piirto 3,6 s → 0,8 s, LCP 3,6 s → 1,5 s. Työpöydän 
 
 **Ei korjattu:** MapLibren käyttämätön koodi (~130 kt) ja vanhan JS:n tuki kuuluvat kirjastoon; oma koonti ei ole
 vaivan arvoinen staattisella sivulla. Tiedostojen pakkaus ja välimuistiaika ovat GitHub Pagesin hallussa.
+
+## 2026-11-11 · Ohut lumi- tai jääkerros merkitään erikseen opetusdatassa
+
+**Löydös:** optinen anturi luokittelee usein lumeksi tai jääksi hyvin ohuen kerroksen, vaikka kitka on hyvä. Sivun
+datassa 11.11. aamulla 7/8 lumikamerasta ja 2/4 jääkamerasta oli kitka ≥ 0,6 (kerrokset 0,01–0,1 mm), ja viimeisen
+24 h aikana 32/83 jäätunnista. Esim. asema 10003: koodi 7 (jää), jäätä 0,02 mm, kitka 0,80.
+
+**Päätös:**
+- **Anturin luokka säilyy**, mutta tunniste saa merkinnän `thin = True`, kun luokka on lumi tai jää, kitka ≥ 0,6 ja
+  kerros (suurempi lumen ja jään määrästä) < 0,1 mm (`labels.py`).
+- **Ensimmäinen malli jättää `thin`-tapaukset pois luokkakoulutuksesta** ja oppii lisäksi kitkan lukuna. "Liukas"-arvio
+  tehdään kitkasta, koska se kertoo kuljettajalle olennaisen.
+- **Luokkalaskuri** näyttää ohuet tapaukset erikseen, eivätkä ne kerrytä valmisrajaa (30 kameraa per luokka).
+- **Kartta pysyy ennallaan:** väri on anturin mittaus, ja paneeli kertoo ristiriidasta ("Anturi näkee ohuen kerroksen
+  (0,02 mm), mutta kitka on vielä hyvä").
+
+**Miksi:** muuten iso osa jää- ja lumiesimerkeistä olisi kuvia, joissa tie näyttää kuivalta tai märältä. Malli oppisi
+hälyttämään turhaan, ja se heikentäisi juuri sitä mittaria, jolla projekti esittää tuloksensa (kuinka usein
+"liukas"-hälytys on aiheellinen).
+
+**Jätettiin:** luokan vaihtaminen kitkan perusteella (esim. ohut jää → märkä). Se olisi omaa tulkintaa mittauksen päälle.
+Myöhemmin testataan, näkyykö ohut kerros kuvissa; jos malli erottaa sen, siitä voi tulla oma luokka "ohut kuura tai lumi".
+
+**Ensimmäinen laskenta (paikalliset ajot):** lumi 0 käyttökelpoista kuvaa, 10 ohutta (7 kameraa); jää 4 kuvaa
+(kitka 0,11, oikeaa jäätä). Talviluokkien kertymä on siis hitaampi kuin pelkästä luokasta näyttäisi.

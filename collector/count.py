@@ -70,7 +70,7 @@ def main() -> None:
     tars = sorted({p.name: p for p in OUT.glob("**/*.tar")}.values())  # sama ajo vain kerran
     coords = station_coords()
 
-    per = {c: {"images": 0, "cameras": set(), "night": 0, "friction": []} for c in CLASSES}
+    per = {c: {"images": 0, "cameras": set(), "night": 0, "friction": [], "thin": 0, "thin_cams": set()} for c in CLASSES}
     reasons = collections.Counter()
     dist = {}
     surface_only = 0
@@ -94,6 +94,10 @@ def main() -> None:
                 reasons[lab["reason"]] += 1
                 continue
             c = per[lab["class"]]
+            if lab.get("thin"):  # ohut kerros: ei mukana luokkakoulutuksessa, lasketaan erikseen
+                c["thin"] += 1
+                c["thin_cams"].add(item["camera"])
+                continue
             c["images"] += 1
             c["cameras"].add(item["camera"])
             c["night"] += is_ir(t.extractfile(f"images/{item['preset']}.jpg").read())
@@ -101,16 +105,18 @@ def main() -> None:
                 c["friction"].append(lab["friction"])
 
     print(f"Ajoja: {len(tars)} ({', '.join(f'{k} {n}' for k, n in kinds.most_common())}) · tienpintakuvia: {surface_only}\n")
-    print(f"{'luokka':<11}{'kuvia':>7}{'kameroita':>11}{'yö (IR)':>9}{'kitka med.':>12}  valmis?")
+    print(f"{'luokka':<11}{'kuvia':>7}{'kameroita':>11}{'yö (IR)':>9}{'kitka med.':>12}  valmis?   ohut kerros (pois)")
     summary = {}
     for cls in CLASSES:
         c = per[cls]
         fr = statistics.median(c["friction"]) if c["friction"] else None
         ready = len(c["cameras"]) >= READY_CAMERAS
         print(f"{cls:<11}{c['images']:>7}{len(c['cameras']):>11}{c['night']:>9}"
-              f"{(f'{fr:.2f}' if fr is not None else '–'):>12}  {'✓' if ready else '–'}")
+              f"{(f'{fr:.2f}' if fr is not None else '–'):>12}  {'✓' if ready else '–'}"
+              + (f"         {c['thin']} kuvaa / {len(c['thin_cams'])} kameraa" if c["thin"] else ""))
         summary[cls] = {"images": c["images"], "cameras": len(c["cameras"]), "night": c["night"],
-                        "friction_median": fr, "ready": ready}
+                        "friction_median": fr, "ready": ready,
+                        "thin_images": c["thin"], "thin_cameras": len(c["thin_cams"])}
 
     print("\nHylätyt:")
     for r, n in reasons.most_common():
