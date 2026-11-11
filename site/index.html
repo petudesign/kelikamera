@@ -224,6 +224,10 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .place p{font-size:13px;color:var(--text-2)}
 .shot{margin:0 18px;position:relative}
 .shot img,.noimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000;border-radius:var(--r-lg)}
+/* odottava kuva himmenee hieman (ei välähdystä); vaihto tapahtuu vasta kun uusi kuva on valmis */
+.shot img{transition:opacity .2s ease}
+.shot img.pending{opacity:.72}
+@media (prefers-reduced-motion:reduce){.shot img{transition:none}.shot img.pending{opacity:1}}
 .shot::after{content:"";position:absolute;left:0;right:0;top:0;aspect-ratio:16/9;border-radius:var(--r-lg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
 .noimg{display:grid;place-items:center;background:var(--surface-2);color:var(--text-2);font-size:13px}
 .shot figcaption{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.45}

@@ -767,3 +767,17 @@ ohut neutraali ura ja valkoinen täyttö lukumäärän vieressä. Puhelimessa ei
 saman varoituksen napautus ei sulkenut sitä, ja klikkaus varoitusalueen sisällä avasi sen aina uudelleen. Nyt
 `clearWarnSel()` ajetaan, kun avataan kamera tai varoituslista, ja saman varoituksen avaaminen uudelleen (listasta
 tai kartalta) sulkee sen. Tarkistettu selaimessa: valinta, poisto, vaihto kameraan ja sulkeminen.
+
+## 2026-11-11 · Kamerakuvan välkyntä aikajanaa selatessa
+
+**Ongelma:** jokainen aikajanan siirto piirsi kamerapaneelin uudelleen, jolloin kuva oli musta, kunnes uusi latautui.
+Toistossa (450 ms välein) tämä tuotti toistuvaa mustaa välähtelyä, joka on epämiellyttävää ja voi olla haitallista
+valoherkille. Lisäksi paneelin vieritys palasi alkuun.
+
+**Korjaus (app.js):** sama kamera pitää edellisen kuvan näkyvissä, ja uusi vaihdetaan vasta, kun se on ladattu
+(`swapWhenReady`). Pyynnöt numeroidaan, joten valmistunut kuva näytetään, jos se on uudempi kuin näkyvä, vaikka paneeli
+olisi välillä piirretty uudelleen. Seuraavan tunnin kuva esiladataan. Hidas lataus (> 250 ms) himmentää kuvaa hieman,
+mutta ei välähdä; vähennetyn liikkeen asetuksella ei himmennystä. Vieritys säilyy.
+
+**Tarkistus:** headless-Chromessa 24 tunnin toisto: 189 näytettä 60 ms välein, 0 tyhjää kuvaa, 23 eri kuvaa näytetty.
+Huom: taustavälilehdessä `decode()` ei valmistu, joten purkua odotetaan enintään 150 ms latauksen jälkeen.

@@ -571,6 +571,32 @@ function panelShown(p){
   if(p.inert){ lastFocus=document.activeElement; p.inert=false; }
   const h=p.querySelector("h2,[tabindex='-1']"); if(h&&!p.contains(document.activeElement)) h.focus({preventScroll:true});
 }
+// vaihda kuva vasta, kun uusi on ladattu ja purettu (ei tyhjää väliä). Pyynnöt numeroidaan:
+// valmistunut kuva näytetään, jos se on uudempi kuin näkyvä, vaikka paneeli olisi välillä piirretty
+// uudelleen (toistossa 450 ms välein), joten kuva etenee toiston mukana eikä jää ensimmäiseen.
+const SHOT={seq:0,shown:0};
+const shotImg=()=>document.querySelector("#panel .shot img");
+function swapWhenReady(im,url,camId){
+  const my=++SHOT.seq;
+  // himmennys vain hitaalle lataukselle: toistossa se sykkisi muuten
+  const dim=setTimeout(()=>{ const cur=shotImg(); if(cur&&SHOT.shown<my) cur.classList.add("pending"); },250);
+  const done=()=>{ clearTimeout(dim); if(SHOT.seq===my){ const cur=shotImg(); if(cur) cur.classList.remove("pending"); } };
+  // ladattu = tavut välimuistissa; purku odotetaan vain lyhyesti, koska taustavälilehdessä decode() ei valmistu
+  const pre=new Image();
+  new Promise((ok,ko)=>{pre.onload=ok;pre.onerror=ko;pre.src=url;})
+    .then(()=>Promise.race([pre.decode?pre.decode().catch(()=>{}):0,new Promise(r=>setTimeout(r,150))])).then(()=>{
+    const cur=shotImg();
+    if(cur&&current&&current.id===camId&&my>SHOT.shown){ SHOT.shown=my; cur.src=url; }
+    done();
+  }).catch(done);
+}
+// toiston ja selauksen sujuvuus: seuraavan tunnin kuva välimuistiin valmiiksi
+const PRELOADED=new Set();
+function preloadNext(c){
+  const nx=slot+1; if(nx>24) return;
+  const at=nx===24?Date.now():Date.parse(DATA.times[nx]), s=shotAt(c,at);
+  if(s&&s.url&&!PRELOADED.has(s.url)){ PRELOADED.add(s.url); const i=new Image(); i.src=s.url; }
+}
 function openCam(id,keep){
   const c=byId[id]; if(!c) return; if(current&&current.type==="warn") clearWarnSel(); current={type:"cam",id}; select(id); refreshWarn();
   if(isMobile()&&!keep) setCollapsed(true);
@@ -581,7 +607,12 @@ function openCam(id,keep){
   const at=past?Date.parse(DATA.times[slot]):0, shot=past?shotAt(c,at):null;
   if(past&&(shot===undefined||!HIST[c.id]||Date.now()-HIST[c.id].at>=10*6e4)){
     const s0=slot; loadHist(c).then(()=>{ if(current&&current.id===c.id&&slot===s0&&shotAt(c,at)!==undefined) openCam(c.id,true) }); }
-  const src=!past?`${c.img}?t=${Math.floor(Date.now()/6e4)}`:shot?shot.url:shot===null?c.img:"";
+  const want=!past?`${c.img}?t=${Math.floor(Date.now()/6e4)}`:shot?shot.url:shot===null?c.img:"";
+  // Sama kamera (aikajanan selaus): edellinen kuva jää näkyviin, kunnes uusi on ladattu ja purettu.
+  // Ilman tätä jokainen vaihto näytti hetken mustaa (välkyntä, joka voi olla myös terveysriski).
+  const p0=document.getElementById("panel"), oldImg=keep&&p0.querySelector(".shot img[src]"),
+        prevSrc=oldImg&&p0.dataset.cam===c.id?oldImg.getAttribute("src"):"", scrollTop=keep?(p0.querySelector(".scroll")||{}).scrollTop||0:0;
+  const src=prevSrc&&want!==prevSrc?prevSrc:want;
   const gap=shot?Math.abs(shot.t-at):0;
   const cap=!past?"":shot?` · ${L.camTaken(fmtClock(new Date(shot.t).toISOString()))}${gap>20*6e4?` (${L.camGap(fmtGap(gap))})`:""}`
     :shot===null?`<br>${L.camLatest}`:`<br>${L.camLoading}`;
@@ -610,8 +641,13 @@ function openCam(id,keep){
       <div class="strip-t"><span>${fmtClock(DATA.times[0])}</span><span>${L.now}</span></div></div>`:""}
   </div>`;
   p.classList.add("on"); if(!keep) panelShown(p);
+  p.dataset.cam=c.id;
+  if(scrollTop) p.querySelector(".scroll").scrollTop=scrollTop;
   const im=p.querySelector(".shot img");
-  if(im) im.onerror=()=>{im.outerHTML=`<div class="noimg">${L.noImg}</div>`};
+  if(im) im.onerror=()=>{ if(im.getAttribute("src")===want) im.outerHTML=`<div class="noimg">${L.noImg}</div>`; };
+  if(!keep) SHOT.shown=SHOT.seq;   // uusi kamera: vanhat lataukset eivät enää saa vaihtaa kuvaa
+  if(im&&want&&src!==want) swapWhenReady(im,want,c.id); else if(im) SHOT.shown=++SHOT.seq;
+  if(past) preloadNext(c);
   if(!past) camTime(c);
 }
 // varoituksen valinta pois: korostus kartalta ja listasta (myös kun avataan kamera tai lista)
@@ -639,7 +675,7 @@ function openWarn(i,keep){
   p.classList.add("on"); panelShown(p);
 }
 function closePanel(){
-  const p=document.getElementById("panel"); p.classList.remove("on"); current=null; select("");
+  const p=document.getElementById("panel"); p.classList.remove("on"); current=null; select(""); delete p.dataset.cam;
   if(!p.inert){ p.inert=true; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus({preventScroll:true}); lastFocus=null; }
   clearWarnSel(); refreshWarn();
 }
