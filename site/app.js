@@ -619,12 +619,16 @@ function openCam(id,keep){
   // Sama kamera (aikajanan selaus): edellinen kuva jää näkyviin, kunnes uusi on ladattu ja purettu.
   // Ilman tätä jokainen vaihto näytti hetken mustaa (välkyntä, joka voi olla myös terveysriski).
   const p0=document.getElementById("panel"), oldImg=keep&&p0.querySelector(".shot img[src]"),
+        prevH=p0.classList.contains("on")?p0.getBoundingClientRect().height:0,
         prevSrc=oldImg&&p0.dataset.cam===c.id?oldImg.getAttribute("src"):"", scrollTop=keep?(p0.querySelector(".scroll")||{}).scrollTop||0:0;
   const src=prevSrc&&want!==prevSrc?prevSrc:want;
   const gap=shot?Math.abs(shot.t-at):0;
   const cap=!past?"":shot?` · ${L.camTaken(fmtClock(new Date(shot.t).toISOString()))}${gap>20*6e4?` (${L.camGap(fmtGap(gap))})`:""}`
     :shot===null?`<br>${L.camLatest}`:`<br>${L.camLoading}`;
-  const sub=k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
+  // anturillinen kamera, jolta puuttuu yksittäinen tunti: tilarivi ja lukemat pysyvät paikallaan (ei nytkähdystä)
+  const hourGap=k==="ei mittausta"&&past&&!!c.h;
+  const sub=hourGap?`<span>${ic("clock")}<span class="num">${fmtClock(DATA.times[slot])}</span></span><span>${ic("tower")}${L.station} ${c.st}</span><span>${ic("pin")}<span class="num">${num(c.km," km")}</span></span>`
+    :k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
     :`<span>${ic("clock")}${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span></span><span>${ic("tower")}${L.station} ${c.st}</span><span>${ic("pin")}<span class="num">${num(c.km," km")}</span></span>`;
   const p=document.getElementById("panel");
   p.setAttribute("aria-label",nameOf(c));
@@ -634,7 +638,7 @@ function openCam(id,keep){
     <div class="place"><h2 tabindex="-1">${esc(nameOf(c))}</h2>${placeLine(c)}</div>
     <figure class="shot"><img ${src?`src="${src}" alt="${esc(nameOf(c))}"`:'alt=""'}>
       <figcaption>${ic("camera")}${L.camNow}${c.view?" · "+esc((L.viewMap[c.view])||c.view.replace(/^Tie (\d)/,LANG==="en"?"Road $1":"Tie $1")):""}<span id="camtime"></span>${cap}</figcaption></figure>
-    ${k!=="ei mittausta"?`<dl class="read">
+    ${k!=="ei mittausta"||hourGap?`<dl class="read">
         <div class="kv joined"><dt>${ic("gauge")}${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
         ${["jää/kuura","luminen"].includes(k)&&fr!=null&&fr>=0.6&&!past&&(c.ice||c.snow)?`<p class="thin">${L.thinIce(num(Math.max(c.ice||0,c.snow||0)," mm",2))}</p>`:""}
         ${past?"":`<div class="kv"><dt>${ic("thermo")}${L.roadT}</dt><dd class="num">${num(c.roadT," °C")}</dd></div>
@@ -649,6 +653,10 @@ function openCam(id,keep){
       <div class="strip-t"><span>${fmtClock(DATA.times[0])}</span><span>${L.now}</span></div></div>`:""}
   </div>`;
   p.classList.add("on"); if(!keep) panelShown(p);
+  // puhelimessa alapaneelin korkeus seuraa sisältöä: saman kameran selauksessa se ei saa lyhentyä
+  // (toiston alussa paneeli nytkähti alas ja takaisin ylös)
+  if(isMobile()&&keep&&p.dataset.cam===c.id){ p.style.minHeight=Math.max(prevH,p.getBoundingClientRect().height)+"px"; }
+  else p.style.minHeight="";
   p.dataset.cam=c.id;
   if(scrollTop) p.querySelector(".scroll").scrollTop=scrollTop;
   // Sama kamera: siirretään vanha kuvaelementti uuteen paneeliin. Uusi <img> samalla osoitteella purettaisiin
@@ -686,7 +694,7 @@ function openWarn(i,keep){
   p.classList.add("on"); panelShown(p);
 }
 function closePanel(){
-  const p=document.getElementById("panel"); p.classList.remove("on"); current=null; select(""); delete p.dataset.cam;
+  const p=document.getElementById("panel"); p.classList.remove("on"); current=null; select(""); delete p.dataset.cam; p.style.minHeight="";
   if(!p.inert){ p.inert=true; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus({preventScroll:true}); lastFocus=null; }
   clearWarnSel(); refreshWarn();
 }

@@ -793,3 +793,14 @@ nopeammin, ja odottavan kuvan himmennys syttyi ja sammui joka askeleella.
 - *Testauksen rajoitus:* headless-Chromen kuvakaappausmittaus (225 ruutua, kirkkaus kamerakuvan alueelta) ei
   havainnut välkyntää kummassakaan versiossa, eli se ei toista ilmiötä. Korjaus perustuu syyn poistamiseen, ja se
   pitää varmistaa oikeassa selaimessa.
+
+**Jatko: paneeli nytkähti toiston alussa.** Toisto alkaa vuorokauden ensimmäisestä tunnista, ja monelta kameralta
+juuri se tunti puuttuu. Silloin tilarivi ja lukemat katosivat hetkeksi ja palasivat seuraavalla tunnilla; puhelimessa
+sisällön mukaan mitoittuva alapaneeli hyppäsi alas ja takaisin ylös (yläreuna 236 → 386 → 272 px).
+- Anturillisen kameran puuttuva tunti näyttää nyt saman rakenteen: tilarivi (kellonaika, asema, etäisyys) ja
+  lukemat (kitka "–"). Otsikko kertoo "Ei mittausta".
+- Puhelimessa paneeli ei lyhene saman kameran selauksen aikana (`min-height` lukitaan, nollataan kun kamera vaihtuu
+  tai paneeli suljetaan).
+- Mitattu headless-Chromessa elementtien sijainnit joka ruudulla toiston alussa: paneeli ja tilarivi eivät liiku;
+  ainoa muutos on kertaluonteinen siirtymä nykyhetkestä menneeseen (menneiltä tunneilta on vain kitka, joten
+  lukemaosio lyhenee kerran).
