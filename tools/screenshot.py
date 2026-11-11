@@ -22,11 +22,13 @@ from pathlib import Path
 import websocket  # websocket-client
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-PORT = 9333
+PORT = int(os.environ.get("SHOT_PORT", "9333"))  # rinnakkaiset ajot: eri portti
 VIEWS = {
     "kartta-desktop.png": (1600, 1000, 2, False),
     "kartta-mobiili.png": (390, 844, 3, True),
 }
+if os.environ.get("SHOT_NARROW"):  # kapein tuettu puhelin (hajota UI -testit)
+    VIEWS["kartta-kapea.png"] = (320, 640, 2, True)
 
 
 class CDP:

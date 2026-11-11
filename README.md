@@ -15,8 +15,9 @@ collector/collect.py   keräin: hakee puuttuvat keruuhetket Digitrafficin histor
 collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä sääasemasta
 collector/count.py     luokkalaskuri: montako esimerkkiä kustakin kelistä on kertynyt
 collector/build_site.py karttasivun data → site/data/ (nykytila, 24 h historia, liikennesäävaroitukset)
-site/                  karttasivu (staattinen, MapLibre, suomi/englanti)
+site/                  karttasivu (staattinen, MapLibre, suomi/englanti): index.html + app.js
 tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
+tools/break_ui.py      hajota UI: sivu pahimman tapauksen datalla (pitkät nimet, tyhjä, kaikki jäässä, rikki)
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
 .github/workflows/     ajastus GitHub Actionsissa (tunnin välein; puuttuvat hetket haetaan jälkikäteen)
 ```

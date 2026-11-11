@@ -561,3 +561,94 @@ täydellä kamerajoukolla ennen kuvien latausta; ensimmäinen ajo voi hakea ~23 
 
 **Riski**: jos GitHub ei käynnistä yhtään ajoa ~23 tuntiin, väliin jäävät hetket menetetään. Seurataan tiedostojen
 väleistä; varasuunnitelma on edelleen ulkoinen ajastin.
+
+## 2026-11-11 · UI-kierros 1: hajota käyttöliittymä
+
+**Menetelmä:** `tools/break_ui.py` rakentaa sivusta neljä versiota pahimman tapauksen datalla (oikeat sijainnit,
+muokattu sisältö): ylipitkät nimet ja varoitukset, 30 varoitusta ja 169 liukastuvaa kameraa (*pitkat*), ei yhtään
+mittausta (*tyhja*), kaikki jäässä (*jaa*) sekä kuvat ja kuvahistoria rikki (*rikki*). Kuvat kolmella leveydellä:
+1600 px, 390 px ja uusi 320 px (`SHOT_NARROW=1`).
+
+**Mikä hajosi ja korjaus:**
+- **Päivitysaika rivittyi puhelimessa kolmelle riville** ("11.11. / klo / 10.24") myös tavallisella 390 px:n
+  puhelimella suomeksi. Nyt ei rivity, ja puhelimessa näytetään pelkkä kellonaika, jos data on samalta päivältä.
+- **Liukastumassa-listan pitkä nimi vei viisi riviä**, ja 320 px:n näkymään mahtui yksi kohde. Nimi katkaistaan
+  kahteen riviin.
+- **Aikajanan aikamerkinnät törmäsivät** 320 px:ssä. Kapealla näytöllä merkintöjä on kolme viiden sijaan.
+- **Pitkä varoitusotsikko vei neljä riviä 22 px:n fontilla.** Yli 40 merkin otsikko näytetään 17 px:nä.
+- **Tyhjä aikajana ei kertonut mitään.** Nyt siinä lukee "Ei mittaushistoriaa", eikä tyhjiä aikamerkintöjä näytetä.
+- **Puuttuva kuva näytti selaimen rikkinäisen kuvan.** Nyt paneelissa lukee "Kuva ei ole saatavilla".
+- Pienet: "(7 min)" rivittyi kahtia; numeron ja yksikön väliin sitova välilyönti.
+
+**Kestivät:** pitkät nimet kamerapaneelissa (rivittyvät siististi), 30 varoituksen lista (vierittyy), kaikki jäässä
+-tila, tyhjä Liukastumassa-lista (selittävä teksti).
+
+**Samassa erässä keräimeen:** ensimmäinen pilviajo 11.11. haki 20 keruuhetkeä (4 940 kuvaa, 275 s). Kuvapalvelin
+katkaisi muutaman siirron kesken, joten kuvahakuun lisättiin kaksi uudelleenyritystä.
+
+## 2026-11-11 · UI-kierros 2: persoona-arviot
+
+**Menetelmä:** viisi itsenäistä agenttia, kukin yhtenä käyttäjänä, käytti paikallista sivua kuvakaappausten kautta
+ja raportoi pisteet ja löydökset: työmatka-autoilija (puhelin, 60 s), kuljetusyrityksen ajojärjestelijä (työpöytä,
+yön reitit), tienpitourakoitsijan päivystäjä (Vaasa–Seinäjoki klo 3), rekrytoiva design lead (2 min, englanti) ja
+heikkonäköinen käyttäjä (200 % zoom, VoiceOver, puna-vihersokeus).
+
+**Korjattiin (usean persoonan yhteiset ensin):**
+- **Kamerapaneeli ei siirtänyt karttaa** (3 persoonaa). Nyt kartta liukuu kameraan, puhelimessa paneelin yläpuolelle.
+- **Varoituslistassa näkyi vain alue** (3). Rivillä on nyt varoitustekstin ensimmäinen lause.
+- **Reitin varoitusrivi laski myös lauantain varoitukset "reitille osuviksi"**. Nyt erotellaan voimassa nyt tai
+  12 h sisällä ja myöhemmin alkavat.
+- **Reitin tulos:** "Liukasta 2 kohdassa" punaisella, vaikka kyse oli lumesta → luokan nimi ja väri ("Lunta tai sohjoa
+  2 kohdassa"); "ei lunta eikä jäätä" -rivi kertoo myös märät kohdat ja on pahimman luokan värinen; pisin
+  mittaamaton väli kilometreinä (Oulu–Kuopio: n. 250 km), ettei harmaa väli näytä turvalliselta; "n. 0 h 24 min" →
+  "n. 24 min"; viimeisin reitti muistetaan ja avautuu yhdellä napautuksella.
+- **Jää näkyy värisokealle**: jää/kuura-pisteillä valkoinen reunus (jää #ff4766 ja kuiva #34c77b näyttävät
+  deuteranopiassa lähes samalta). "Ei mittausta" -harmaa vaaleammaksi (#5b6573 → #7d8794, kontrasti yli 3:1).
+- **Ruudunlukija:** kartalta pois `role="application"`; paneelista pois koko paneelin ääneen lukeva `aria-live`;
+  avattaessa kohdistus siirtyy paneelin otsikkoon ja sulkiessa takaisin; suljettu paneeli on `inert`; välilehdille
+  nuolinäppäimet ja kiertävä tabindex. Alle 12 px:n tekstit 12 px:iin. Keskileveällä näytöllä (myös 200 % zoom)
+  kortti ei jää aikajanan alle.
+- **Projektin tarkoitus näkyviin** (design lead): selite kartan yläreunaan, "kuudelta kamerasta kymmenestä mittaus
+  puuttuu: niille opetan tekoälyä…". Harmaan kameran tila ei enää lupaa "Tekoälyarvio tulossa" (luki keskeneräiseltä),
+  vaan "Ei anturia lähellä · katso kamerakuva".
+- **Tiet-välilehti**: mukana kaikki tiet, joilla on vähintään 3 kameraa (ennen 3 *mitattua*; päivystäjän tiet 18 ja 19
+  puuttuivat). Nauhan päissä kunnat "Tien alku/loppu" -tekstin sijaan.
+- **Pienet:** kameran otsikon toisto ("Tie 51 Inkoo / Tie 51 · Inkoo") poistettu; kuvakulman nimi englanniksi;
+  aikajanan "Nyt" näkyi kahdesti.
+
+**Löydös datasta:** Mustasaaren asema 10003 ilmoittaa optisella anturilla jäätä (koodi 7), mutta jäätä on 0,02 mm ja
+kitka 0,80, eikä asemalla ole tienpinnan lämpöanturia. Kyse ei ole sivun virheestä. Paneeli kertoo nyt: "Anturi näkee
+ohuen kerroksen (0,02 mm), mutta kitka on vielä hyvä." **Avoin päätös:** pitäisikö opetusdatassa jää/kuura-luokka
+vaatia myös kitkan laskua tai jään vähimmäismäärää, ettei malli opi "jääksi" kuivalta näyttäviä kuvia?
+
+**Ei tehty vielä (ehdotuksina):** kamerahaku nimellä (näppäimistö- ja ruudunlukijakäyttäjille ainoa tapa päästä
+kameraan suoraan); Liukastumassa-listan rajaus näkyvään alueeseen tai reittiin; kitka ja tien lämpötila listariveille;
+reittikohtainen muutos viime tunteina; varoitukset ryhmiteltyinä nyt / 12 h / myöhemmin myös karttavälilehdellä.
+
+## 2026-11-11 · UI-kierros 3: Lighthouse-silmukka
+
+**Menetelmä:** Lighthouse 12 (mobiili ja työpöytä) paikalliselle sivulle, korjaus, uusi mittaus, kunnes luvut eivät
+parane. Paikallinen palvelin ei pakkaa tiedostoja, joten luvut ovat GitHub Pagesia (gzip) varovaisempia.
+
+| | Suorituskyky | Saavutettavuus | Parhaat käytännöt | SEO |
+|---|---:|---:|---:|---:|
+| Mobiili, ennen | 82 | 90 | 100 | 100 |
+| Mobiili, jälkeen | **100** | **100** | 100 | 100 |
+| Työpöytä, ennen | 87 | 96 | 100 | 100 |
+| Työpöytä, jälkeen | **100** | **100** | 100 | 100 |
+
+Mobiilin ensimmäinen piirto 3,6 s → 0,8 s, LCP 3,6 s → 1,5 s. Työpöydän CLS 0,178 → 0,015, LCP 1,5 s → 0,2 s.
+
+**Korjaukset:**
+- **MapLibre ja sivun skripti estivät ensimmäisen piirron** (arvio 2,7 s mobiilissa). Sivun skripti siirrettiin
+  tiedostoon `site/app.js`, ja molemmat ladataan `defer`-skripteinä (järjestys säilyy, funktiot pysyvät globaaleina,
+  joten kuvakaappaus- ja testityökalut toimivat ennallaan). Kartan CSS ja fontti ladataan piirtoa estämättä.
+- **Esiyhteydet** kuvapalvelimelle, karttaruutuihin ja fontteihin.
+- **Asettelun hyppy:** varoituslista ja lähdetiedot siirsivät korttia, kun data latautui. Ne pysyvät näkymättöminä
+  latauksen ajan, ja selitteelle varataan korkeus.
+- **LCP-elementti** oli kartan selitysteksti, joka kirjoitettiin vasta skriptissä. Suomenkielinen teksti on nyt
+  valmiina HTML:ssä.
+- **Saavutettavuus:** pienennä-painikkeelta ja aikajanan liukusäätimeltä puuttui nimi.
+
+**Ei korjattu:** MapLibren käyttämätön koodi (~130 kt) ja vanhan JS:n tuki kuuluvat kirjastoon; oma koonti ei ole
+vaivan arvoinen staattisella sivulla. Tiedostojen pakkaus ja välimuistiaika ovat GitHub Pagesin hallussa.

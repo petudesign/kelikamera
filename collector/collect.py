@@ -343,13 +343,17 @@ def winter_rank(snap: dict[str, dict]) -> int | None:
 
 # ------------------------------------------------------------------ images --
 def fetch_image(url: str) -> bytes | None:
-    try:
-        r = session.get(url, timeout=30)
-        r.raise_for_status()
-        im = Image.open(io.BytesIO(r.content)).convert("RGB")
-    except Exception as e:  # verkko- tai kuvavirhe: ohitetaan tämä kuva
-        print(f"  ! {url.split('?')[0]}: {e}", file=sys.stderr)
-        return None
+    for attempt in range(3):  # kuvapalvelin katkaisee joskus siirron kesken
+        try:
+            r = session.get(url, timeout=30)
+            r.raise_for_status()
+            im = Image.open(io.BytesIO(r.content)).convert("RGB")
+            break
+        except Exception as e:  # verkko- tai kuvavirhe: yritetään uudelleen, lopulta ohitetaan
+            if attempt == 2:
+                print(f"  ! {url.split('?')[0]}: {e}", file=sys.stderr)
+                return None
+            time.sleep(1 + attempt)
     if im.width > IMG_WIDTH:
         im = im.resize((IMG_WIDTH, round(im.height * IMG_WIDTH / im.width)), Image.LANCZOS)
     buf = io.BytesIO()
