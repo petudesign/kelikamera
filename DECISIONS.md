@@ -781,3 +781,15 @@ mutta ei välähdä; vähennetyn liikkeen asetuksella ei himmennystä. Vieritys 
 
 **Tarkistus:** headless-Chromessa 24 tunnin toisto: 189 näytettä 60 ms välein, 0 tyhjää kuvaa, 23 eri kuvaa näytetty.
 Huom: taustavälilehdessä `decode()` ei valmistu, joten purkua odotetaan enintään 150 ms latauksen jälkeen.
+
+**Jatko samana päivänä (välkyntä jatkui käyttäjän selaimessa):** ensimmäinen korjaus piti kuvan osoitteen samana, mutta
+jokainen aikajanan askel loi silti *uuden* `<img>`-elementin. Selain purkaa uuden elementin kuvan uudelleen ja voi
+näyttää ruudun tai kaksi tyhjää, vaikka tavut ovat välimuistissa. Lisäksi toisto (450 ms) eteni kuvien latausta
+nopeammin, ja odottavan kuvan himmennys syttyi ja sammui joka askeleella.
+- **Sama kuvaelementti siirretään** uudelleen piirrettyyn paneeliin (`replaceWith`), joten se ei koskaan tyhjene.
+- **Toisto odottaa kuvaa:** askel 800 ms (vähennetty liike 1200 ms), ja jos kamera on auki, seuraavaan tuntiin
+  siirrytään vasta kun sen kuva on vaihtunut (enintään 3 s odotus).
+- **Himmennys poistettu.**
+- *Testauksen rajoitus:* headless-Chromen kuvakaappausmittaus (225 ruutua, kirkkaus kamerakuvan alueelta) ei
+  havainnut välkyntää kummassakaan versiossa, eli se ei toista ilmiötä. Korjaus perustuu syyn poistamiseen, ja se
+  pitää varmistaa oikeassa selaimessa.

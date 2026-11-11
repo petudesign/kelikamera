@@ -511,11 +511,20 @@ function renderTimeline(){
 }
 function setSlot(i){ slot=i; renderTimeline(); renderLegend(); refreshMap(); refreshWarn(); if(road!=null)renderRoads(); if(ROUTE.geom)renderRoute(); if(current&&current.type==="cam")openCam(current.id,true); }
 document.getElementById("slider").oninput=e=>{stop();setSlot(+e.target.value)};
-function stop(){ if(playing){clearInterval(playing);playing=null;renderTimeline();} }
+function stop(){ if(playing){clearTimeout(playing);playing=null;renderTimeline();} }
 document.getElementById("play").onclick=()=>{
   if(playing) return stop();
   if(slot===24) setSlot(0);
-  playing=setInterval(()=>{ if(slot>=24){stop();return;} setSlot(slot+1); }, matchMedia("(prefers-reduced-motion: reduce)").matches?900:450);
+  // Toisto etenee tunnin kerrallaan. Jos kamera on auki, odotetaan että sen kuva on vaihtunut
+  // (enintään 3 s), jotta kuva ehtii mukaan eikä toisto karkaa kuvien edelle.
+  const step=prefersReduced()?1200:800; let waited=0;
+  const tick=()=>{
+    if(slot>=24){stop();return;}
+    const loading=current&&current.type==="cam"&&SHOT.seq>SHOT.shown;
+    if(loading&&waited<3000){ waited+=100; playing=setTimeout(tick,100); return; }
+    waited=0; setSlot(slot+1); playing=setTimeout(tick,step);
+  };
+  playing=setTimeout(tick,step);
   renderTimeline();
 };
 
@@ -578,9 +587,8 @@ const SHOT={seq:0,shown:0};
 const shotImg=()=>document.querySelector("#panel .shot img");
 function swapWhenReady(im,url,camId){
   const my=++SHOT.seq;
-  // himmennys vain hitaalle lataukselle: toistossa se sykkisi muuten
-  const dim=setTimeout(()=>{ const cur=shotImg(); if(cur&&SHOT.shown<my) cur.classList.add("pending"); },250);
-  const done=()=>{ clearTimeout(dim); if(SHOT.seq===my){ const cur=shotImg(); if(cur) cur.classList.remove("pending"); } };
+  // Ei himmennystä: toistossa se syttyi ja sammui joka askeleella, mikä näytti välkkymiseltä.
+  const done=()=>{};
   // ladattu = tavut välimuistissa; purku odotetaan vain lyhyesti, koska taustavälilehdessä decode() ei valmistu
   const pre=new Image();
   new Promise((ok,ko)=>{pre.onload=ok;pre.onerror=ko;pre.src=url;})
@@ -643,7 +651,10 @@ function openCam(id,keep){
   p.classList.add("on"); if(!keep) panelShown(p);
   p.dataset.cam=c.id;
   if(scrollTop) p.querySelector(".scroll").scrollTop=scrollTop;
-  const im=p.querySelector(".shot img");
+  // Sama kamera: siirretään vanha kuvaelementti uuteen paneeliin. Uusi <img> samalla osoitteella purettaisiin
+  // uudelleen ja näyttäisi ruudun tai kaksi tyhjää (välkyntä); siirretty elementti piirtyy heti.
+  let im=p.querySelector(".shot img");
+  if(im&&prevSrc&&oldImg){ im.replaceWith(oldImg); im=oldImg; }
   if(im) im.onerror=()=>{ if(im.getAttribute("src")===want) im.outerHTML=`<div class="noimg">${L.noImg}</div>`; };
   if(!keep) SHOT.shown=SHOT.seq;   // uusi kamera: vanhat lataukset eivät enää saa vaihtaa kuvaa
   if(im&&want&&src!==want) swapWhenReady(im,want,c.id); else if(im) SHOT.shown=++SHOT.seq;
