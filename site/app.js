@@ -25,7 +25,7 @@ const STR={
   roadT:"Tien lämpötila",airT:"Ilman lämpötila",water:"Vesi",snow:"Lumi",ice:"Jää",
   noMeasure:"Ei mitattua keliä",far:km=>`Lähin tiesääasema on ${km} päässä, eikä sen mittaus kerro tämän kameran kelistä.`,
   nosensor:"Lähimmällä tiesääasemalla ei ole tienpinnan kelianturia.",aiNote:"Tähän tulee tekoälyn arvio kamerakuvasta.",
-  last24:"Viimeiset 24 h",now:"Nyt",ago24:"−24 h",ago12:"−12 h",play:"Toista viimeiset 24 h",pause:"Pysäytä",
+  last24:"Viimeiset 24 h",now:"Nyt",slipCount:n=>`lumi/jää ${n}`,ago24:"−24 h",ago12:"−12 h",play:"Toista viimeiset 24 h",pause:"Pysäytä",
   timeAt:"Klo",pastNote:"Kartta näyttää kelin hetkellä",data:"Data",fmi:"Ilmatieteen laitos",
   expand:"Näytä",collapse:"Piilota",causes:{snowOrSleet:"lumi- tai räntäsade",freezingRain:"jäätävä sade",slipperyRoad:"liukkaus",iceOnRoad:"jää"}},
  en:{locale:"en-GB",title:"Kelikamera · Finnish roads now",mapLabel:"Road weather camera map",
@@ -52,7 +52,7 @@ const STR={
   roadT:"Road temperature",airT:"Air temperature",water:"Water",snow:"Snow",ice:"Ice",
   noMeasure:"No measured conditions",far:km=>`The nearest road weather station is ${km} away, so its reading doesn't describe this camera's road.`,
   nosensor:"The nearest road weather station has no road surface sensor.",aiNote:"An AI estimate from the camera image will appear here.",
-  last24:"Last 24 h",now:"Now",ago24:"−24 h",ago12:"−12 h",play:"Play the last 24 h",pause:"Pause",
+  last24:"Last 24 h",now:"Now",slipCount:n=>`snow/ice ${n}`,ago24:"−24 h",ago12:"−12 h",play:"Play the last 24 h",pause:"Pause",
   timeAt:"At",pastNote:"Map shows conditions at",data:"Data",fmi:"Finnish Meteorological Institute",
   expand:"Show",collapse:"Hide",causes:{snowOrSleet:"snow or sleet",freezingRain:"freezing rain",slipperyRoad:"slippery road",iceOnRoad:"ice"}}
 };
@@ -169,7 +169,7 @@ function addLayers(){
       if(d(best)<=r*r) return openCam(best.properties.id);
     }
     const w=map.queryRenderedFeatures(e.point,{layers:["warn-fill"]})[0];
-    if(w) return openWarn(w.properties.i);
+    if(w) return openWarn(w.properties.i);   // sama alue uudelleen sulkee (openWarn)
     closePanel();
   });
   applyFilter();
@@ -219,7 +219,7 @@ function renderLegend(){
   const el=document.getElementById("rows");
   el.innerHTML=ORDER.map(k=>`<li><button class="row" aria-pressed="${!hidden.has(k)}" data-k="${k}" style="color:${COLORS[k]}">
     <span class="sw" style="background:${COLORS[k]}"></span><span class="lbl" style="color:var(--text)">${T().cls[k]}</span>
-    <span class="n num">${n[k]}</span><span class="share" aria-hidden="true"><i style="width:${(n[k]/total*100).toFixed(1)}%"></i></span></button></li>`).join("");
+    <span class="share" aria-hidden="true"><i style="width:${(n[k]/total*100).toFixed(1)}%"></i></span><span class="n num">${n[k]}</span></button></li>`).join("");
   el.querySelectorAll(".row").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k; hidden.has(k)?hidden.delete(k):hidden.add(k);
     b.setAttribute("aria-pressed",String(!hidden.has(k))); applyFilter();
@@ -234,7 +234,7 @@ function warnItems(only){
      :`<p class="note">${T().noWarnings}</p>`;
 }
 function openWarnList(only){
-  current={type:"warnlist",only:Array.isArray(only)?only:null}; select(""); if(isMobile()) setCollapsed(true);
+  clearWarnSel(); current={type:"warnlist",only:Array.isArray(only)?only:null}; select(""); refreshWarn(); if(isMobile()) setCollapsed(true);
   const L=T(), p=document.getElementById("panel");
   p.setAttribute("aria-label",L.warnings);
   p.innerHTML=`<div class="scroll">
@@ -485,24 +485,27 @@ function renderRoute(){
 }
 
 /* ===================== aikajana ===================== */
-// osuus kameroista kussakin kelissä, tunneittain (vain mitatut)
-let SHARES=null;
-function shares(){
-  if(SHARES) return SHARES;
-  SHARES=DATA.times.map((_,i)=>{const n=[0,0,0,0,0];let tot=0;
-    DATA.cameras.forEach(c=>{const x=c.h?c.h[i]:-1;if(x>=0){n[x]++;tot++}}); return n.map(v=>tot?v/tot:0)});
-  return SHARES;
+// liukkaat kamerat tunneittain (jää/kuura + lumi/sohjo), aikajanan pylväät
+let SLIP=null;
+function slipCounts(){
+  if(SLIP) return SLIP;
+  SLIP=DATA.times.map((_,i)=>{let ice=0,snow=0,any=0;
+    DATA.cameras.forEach(c=>{const x=c.h?c.h[i]:-1; if(x>=0)any++; if(x===4)ice++; else if(x===3)snow++;}); return {ice,snow,any}});
+  return SLIP;
 }
 function renderTimeline(){
   const out=document.getElementById("tlabel"), s=document.getElementById("slider");
-  const sh=shares(), last=DATA.times.length-1;
-  const none=sh.every(p=>p.every(v=>!v));
-  document.getElementById("tbars").innerHTML=none?`<span class="tempty">${T().noHist}</span>`:sh.map((p,i)=>`<div class="col${i===slot?" sel":(i<slot?" past":"")}">${
-    p.map((v,k)=>`<i style="height:${(v*100).toFixed(1)}%;background:${COLORS[KEYS[k]]}"></i>`).join("")}</div>`).join("");
+  const sc=slipCounts(), last=DATA.times.length-1, L=T();
+  const none=sc.every(x=>!x.any), max=Math.max(10,...sc.map(x=>x.ice+x.snow));
+  document.getElementById("tbars").innerHTML=none?`<span class="tempty">${L.noHist}</span>`:sc.map((x,i)=>{
+    const n=x.ice+x.snow, hi=x.ice/max*100, hs=x.snow/max*100;
+    return `<div class="col${i===slot?" sel":""}" title="${fmtClock(DATA.times[i])} · ${L.slipCount(n)}">${
+      n?`<i style="height:${hi.toFixed(1)}%;background:${COLORS["jää/kuura"]}"></i><i style="height:${hs.toFixed(1)}%;background:${COLORS["luminen"]}"></i>`:""}</div>`}).join("");
   document.getElementById("tticks").innerHTML=none?"":(innerWidth<400?[0,12,24]:[0,6,12,18,24]).map(i=>
     `<span style="left:${((i+.5)/(last+1)*100).toFixed(2)}%">${fmtClock(DATA.times[i])}</span>`).join("");
-  s.value=slot; s.setAttribute("aria-valuetext",slot===24?T().now:fmtClock(DATA.times[slot]));
-  out.textContent=slot===24?T().now:fmt(DATA.times[slot],{weekday:"short",hour:"2-digit",minute:"2-digit"});
+  const cur=sc[slot]||{ice:0,snow:0};
+  s.value=slot; s.setAttribute("aria-valuetext",`${slot===24?L.now:fmtClock(DATA.times[slot])}, ${L.slipCount(cur.ice+cur.snow)}`);
+  out.innerHTML=`${slot===24?L.now:fmt(DATA.times[slot],{weekday:"short",hour:"2-digit",minute:"2-digit"})}<small>${L.slipCount(cur.ice+cur.snow)}</small>`;
   out.classList.toggle("past",slot!==24);
   const p=document.getElementById("play"); p.innerHTML=playing?PAUSE:PLAY; p.setAttribute("aria-label",playing?T().pause:T().play);
 }
@@ -569,7 +572,7 @@ function panelShown(p){
   const h=p.querySelector("h2,[tabindex='-1']"); if(h&&!p.contains(document.activeElement)) h.focus({preventScroll:true});
 }
 function openCam(id,keep){
-  const c=byId[id]; if(!c) return; current={type:"cam",id}; select(id);
+  const c=byId[id]; if(!c) return; if(current&&current.type==="warn") clearWarnSel(); current={type:"cam",id}; select(id); refreshWarn();
   if(isMobile()&&!keep) setCollapsed(true);
   if(!keep&&ready()) map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),8),
     offset:isMobile()?[0,-innerHeight*.3]:[-190,0],duration:prefersReduced()?0:800});
@@ -611,7 +614,14 @@ function openCam(id,keep){
   if(im) im.onerror=()=>{im.outerHTML=`<div class="noimg">${L.noImg}</div>`};
   if(!past) camTime(c);
 }
+// varoituksen valinta pois: korostus kartalta ja listasta (myös kun avataan kamera tai lista)
+function clearWarnSel(){
+  if(ready()){ map.setFilter("warn-sel",["==",["get","i"],-1]); }
+  document.querySelectorAll(".warn").forEach(b=>b.removeAttribute("aria-current"));
+}
 function openWarn(i,keep){
+  // sama varoitus uudelleen = valinta pois
+  if(!keep&&current&&current.type==="warn"&&current.i===i) return closePanel();
   const w=WARN[i]; if(!w) return; current={type:"warn",i}; select("");
   if(isMobile()&&!keep) setCollapsed(true);
   if(ready()){ map.setFilter("warn-sel",["==",["get","i"],i]); refreshWarn(); }
@@ -631,8 +641,7 @@ function openWarn(i,keep){
 function closePanel(){
   const p=document.getElementById("panel"); p.classList.remove("on"); current=null; select("");
   if(!p.inert){ p.inert=true; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus({preventScroll:true}); lastFocus=null; }
-  if(ready()){ map.setFilter("warn-sel",["==",["get","i"],-1]); refreshWarn(); }
-  document.querySelectorAll(".warn").forEach(b=>b.removeAttribute("aria-current"));
+  clearWarnSel(); refreshWarn();
 }
 addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
 const panelEl=document.getElementById("panel");

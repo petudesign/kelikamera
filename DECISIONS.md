@@ -747,3 +747,23 @@ HTML:ssä, ja niitä päivitetään vain kielen vaihtuessa; luku on oma elementt
 **Jätettiin:** isoilla kirjaimilla harvennetut mikro-otsikot (mapcn:n analytics-lohkoissa; torjuttu jo UI v2:ssa);
 React-siirto; ikonit välilehdille (tila ei riitä mobiilissa). **Avoin:** puhelimessa reittilomake ja yhteenveto eivät
 mahdu kortin 52 %:n korkeuteen; lomakkeen voisi tiivistää reitin löydyttyä.
+
+## 2026-11-11 · Aikajana, selite ja varoitusten valinta (käyttäjän palaute)
+
+**Aikajana:**
+- *Ongelma:* pylväät olivat mitattujen kameroiden kelijakauma tunneittain (pinottu, kaikki luokat). Käyttäjä ei
+  ymmärtänyt, mitä viivat tarkoittavat, ja vaalea yläosa (kostea/lumi) näytti satunnaiselta.
+- *Nyt:* jokainen tunti on neutraali ura, jossa näkyy **lumi- ja jääkameroiden määrä** (jää punainen, lumi valkoinen),
+  skaalattuna vuorokauden suurimpaan (vähintään 10). Lukeman alla on määrä tekstinä ("ke 03.00 · lumi/jää 8"), ja sama
+  on solun vihjeessä ja ruudunlukijan arvossa. Sana on "lumi/jää" eikä "liukasta", koska anturin lumi- tai jääluokka
+  voi olla ohut kerros hyvällä kitkalla (ks. ohut kerros -päätös).
+- Pehmuste tasaiseksi (8 px joka puolella, lukeman leveys 72 px eikä 88 px), ja toisto/tauko on oikea painike
+  (pinta, hiusviiva, varjo).
+
+**Selite:** v5:n rivin taustatäyttö ja värillinen vasen reuna poistettiin ("AI-höttöä"). Osuus on nyt oma sarakkeensa:
+ohut neutraali ura ja valkoinen täyttö lukumäärän vieressä. Puhelimessa ei uraa (kaksi saraketta).
+
+**Varoitusten valinta jäi päälle.** Syyt: kameran avaaminen ei poistanut varoituksen korostusta kartalta eikä listasta,
+saman varoituksen napautus ei sulkenut sitä, ja klikkaus varoitusalueen sisällä avasi sen aina uudelleen. Nyt
+`clearWarnSel()` ajetaan, kun avataan kamera tai varoituslista, ja saman varoituksen avaaminen uudelleen (listasta
+tai kartalta) sulkee sen. Tarkistettu selaimessa: valinta, poisto, vaihto kameraan ja sulkeminen.
