@@ -888,3 +888,9 @@ Google-fontin erillinen yhteys jäi pois).
 **Jatko (13.11.):** tietosuojateksti oli yksi pitkä kappale lähdetietojen alla. Nyt se on avattava rivi
 "Tietosuoja · ei evästeitä, ei analytiikkaa" (kilpi-ikoni), ja auki se näyttää taulukon: mikä palvelu, mitä se näkee.
 Suljettuna vie yhden rivin; olennaisin (ei evästeitä, ei analytiikkaa) näkyy avaamatta.
+
+**Jatko: tietosuojarivi näkyi tyhjänä käyttäjällä.** Syy oli välimuisti, ei koodi: GitHub Pages antaa tiedostoille
+10 min välimuistiajan (`max-age=600`), joten selain sai uuden `index.html`:n mutta käytti vanhaa `app.js`:ää, jossa
+rivin tekstejä ei vielä ollut. Korjaus: `build_site.py` lisää skriptin osoitteeseen sisällön tiivisteen
+(`app.js?v=<sha1>`) jokaisessa sivun rakennuksessa. Tiiviste vaihtuu vain, kun `app.js` muuttuu, joten uusi sivu hakee
+aina siihen kuuluvan skriptin, ja muuten välimuisti toimii normaalisti.

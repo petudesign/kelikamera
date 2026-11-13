@@ -233,5 +233,23 @@ def main() -> None:
         print(f"  site/data/{f}: {(SITE_DATA / f).stat().st_size / 1e3:.0f} kt")
 
 
+def stamp_assets() -> None:
+    """Versiotunniste skriptin osoitteeseen (app.js?v=<sisällön tiiviste>).
+
+    GitHub Pages antaa tiedostoille 10 min välimuistiajan: uusi index.html ja välimuistin vanha app.js
+    sopivat yhteen huonosti (13.11. tietosuojarivi jäi tyhjäksi). Tiiviste vaihtuu vain, kun app.js muuttuu.
+    """
+    import hashlib
+    import re
+    site = ROOT / "site"
+    v = hashlib.sha1((site / "app.js").read_bytes()).hexdigest()[:10]
+    html = (site / "index.html").read_text()
+    new = re.sub(r'src="app\.js(\?v=[0-9a-f]+)?"', f'src="app.js?v={v}"', html)
+    if new != html:
+        (site / "index.html").write_text(new)
+    print(f"  app.js?v={v}")
+
+
 if __name__ == "__main__":
     main()
+    stamp_assets()
