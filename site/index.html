@@ -8,15 +8,17 @@
 <title>Kelikamera · Suomen tiet nyt</title>
 <meta name="description" content="Tien pinnan tila Fintrafficin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' style='background:%230b0d10' width='22' height='22' viewBox='0 0 24 24' aria-hidden='true'><defs><clipPath id='lens'><circle cx='12' cy='13' r='5.2'/></clipPath></defs><path d='M8.2 6 9.6 3.6h4.8L15.8 6' fill='none' stroke='%23eef1f4' stroke-width='1.7' stroke-linejoin='round'/><rect x='1.8' y='6' width='20.4' height='14.6' rx='3' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><circle cx='12' cy='13' r='5.2' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><g clip-path='url(%23lens)' stroke-linecap='round'><path d='M9.3 18.5 11.3 8.2M14.7 18.5 12.7 8.2' stroke='%23eef1f4' stroke-width='1.2'/><path d='M12 17.6v-1.8M12 14.3v-1.5M12 11.4v-1.2' stroke='%23f5c518' stroke-width='1.2'/></g><circle cx='18.6' cy='9' r='1' fill='%23ff4766'/></svg>">
-<link rel="preconnect" href="https://unpkg.com">
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- ei estä ensimmäistä piirtoa: kartan tyylit ja fontti ladataan rinnalla -->
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"></noscript>
+<!-- fontti ja MapLibre omasta reposta: kävijän IP-osoite ei mene Googlelle eikä CDN:lle (GDPR) -->
+<link rel="preload" href="vendor/geist/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css"></noscript>
 <style>
+/* Geist (OFL 1.1, vendor/geist/LICENSE), muuttuva paino 100–900 */
+@font-face{font-family:"Geist";font-style:normal;font-weight:100 900;font-display:swap;src:url(vendor/geist/geist-latin-wght-normal.woff2) format("woff2-variations"),url(vendor/geist/geist-latin-wght-normal.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Geist";font-style:normal;font-weight:100 900;font-display:swap;src:url(vendor/geist/geist-latin-ext-wght-normal.woff2) format("woff2-variations"),url(vendor/geist/geist-latin-ext-wght-normal.woff2) format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 /* =====================================================================
    Kelikamera UI v4 – komponenttijärjestelmä (DECISIONS.md 2026-11-11)
    Yksi pinta-, varjo-, kulma- ja välistysasteikko kaikille paneeleille.
@@ -103,6 +105,9 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .item small{display:block;font-size:12px;color:var(--text-2);margin-top:1px}
 .item .ago,.item .km{font-size:12px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .blank{padding:14px 16px;font-size:13px;color:var(--text-2)}
+.scope{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px 0}
+.scope .seg button{min-width:0;padding:4px 10px}
+.scope .num{font-size:12px;color:var(--text-3)}
 
 /* ---------- osiot ---------- */
 .sec{padding:16px;box-shadow:inset 0 1px 0 var(--line)}
@@ -156,6 +161,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .sugg button{display:block;width:100%;text-align:left;padding:8px 10px;font-size:14px;border-radius:var(--r-md)}
 .sugg button small{display:block;font-size:12px;color:var(--text-2)}
 .sugg button[aria-selected="true"]{background:var(--surface-3)}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.camfind{padding:12px 16px 0}
+.camfind input{font-size:15px;padding-top:8px;padding-bottom:8px}
+.camfind .sugg{left:16px;right:16px;z-index:4}
+.sugg .cam{display:grid;grid-template-columns:10px 1fr auto;gap:10px;align-items:center}
+.sugg .cam small{grid-column:2}
+.sugg .cam .k{font-size:12px;color:var(--text-3);white-space:nowrap}
 .rbtns{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-2);min-height:24px}
 .rbtns button{margin-right:-8px}
 .last .ic{width:16px;height:16px;color:var(--text-3)}
@@ -163,7 +175,8 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .last small{display:block;color:var(--text-3);font-size:12px;font-weight:400;margin-top:1px}
 .last span{min-width:0}
 .rsum{margin:6px;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
-.rsum .trip{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.rsum .trip{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.rsum .editroute{display:none;margin:-4px -6px -4px 0}
 .rsum .meta{font-size:13px;color:var(--text-2);margin-top:2px}
 .rsum .mix{display:flex;height:6px;margin:12px 0 8px;border-radius:6px;overflow:hidden;background:var(--line)}
 .rsum .mix i{display:block}
@@ -282,6 +295,10 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   .row .share{display:none}
   .row{padding:9px 10px;min-height:40px}
   .sec.explain{display:none}
+  .camfind{padding:8px 12px 2px}
+  #p-route.has-route:not(.editing) .rform{display:none}
+  #p-route.has-route:not(.editing) .rsum .editroute{display:inline-flex}
+  .camfind input{font-size:16px}
   #warnsec h2,#warnsec .sub,#warnsec .warn,#warnsec>.note{display:none}
   #warnsec{padding-top:2px;padding-bottom:10px}
   .warnsum{display:flex}
@@ -358,10 +375,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
     <button role="tab" id="tab-roads" aria-controls="p-roads" aria-selected="false"><span>Tiet</span></button>
   </div>
   <div class="tabpanel" id="p-map" role="tabpanel" aria-labelledby="tab-map">
+    <div class="camfind field"><label for="camq" class="sr" data-t="camSearchLabel">Hae kameraa</label>
+      <div class="in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="camq" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="camres" aria-autocomplete="list" placeholder="Hae kameraa: nimi, tie tai kunta"></div>
+      <ul class="sugg" id="camres" role="listbox" hidden></ul></div>
     <div class="sec explain"><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></div>
     <ul class="rows" id="rows"></ul>
     <div class="sec" id="warnsec"></div>
-    <p class="credits"><span data-t="data"></span>: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
+    <p class="credits"><span data-t="data"></span>: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth<br><span data-t="privacy"></span></p>
   </div>
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
     <div class="rform">
@@ -393,7 +413,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 <aside class="panel" id="panel" inert></aside>
 
 
-<script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script defer src="vendor/maplibre/maplibre-gl.js"></script>
 <script defer src="app.js"></script>
 </body>
 </html>

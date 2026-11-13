@@ -524,11 +524,31 @@ def upload(paths: list[Path]) -> None:
     print(f"  ladattu: {repo} ({len(paths)} tiedostoa)")
 
 
+def check_gaps(now: datetime) -> list[datetime]:
+    """Ruudukkohetket, jotka ovat juuri pudonneet historian ulkopuolelle (22–30 h sitten) ilman tiedostoa."""
+    have = existing_stamps(now)
+    lost = []
+    t = (now - HISTORY_SPAN).replace(minute=0, second=0, microsecond=0)
+    while t >= now - HISTORY_SPAN - timedelta(hours=8):
+        if t.hour % SLOT_HOURS == 0 and t < now - HISTORY_SPAN and not any(abs(h - t) <= OLD_RUN_COVERS for h in have):
+            lost.append(t)
+        t -= timedelta(hours=1)
+    return sorted(lost)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="vain N ensimmäistä kameraa (testi)")
     ap.add_argument("--dry-run", action="store_true", help="näytä puuttuvat keruuhetket ja kuvamäärät, älä lataa kuvia")
+    ap.add_argument("--check-gaps", action="store_true",
+                    help="tarkista, onko ruudukkohetkiä menetetty (historia ei enää kata niitä); virhe = exit 1")
     args = ap.parse_args()
+    if args.check_gaps:
+        lost = check_gaps(datetime.now(timezone.utc))
+        for t in lost:
+            print(f"::error::Keruuhetki {t:%Y-%m-%d %H:%M} UTC menetetty: yhtään keruuajoa ei mennyt läpi ~23 h:n sisällä")
+        print(f"Menetettyjä keruuhetkiä: {len(lost)}")
+        raise SystemExit(1 if lost else 0)
     written = run(args.limit, args.dry_run)
     upload(written)
     set_output("collected", "true" if written else "false")

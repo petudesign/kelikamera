@@ -58,19 +58,21 @@ jobs:
         with:
           path: site
 
-      # Julkisessa repossa GitHub poistaa ajastuksen käytöstä, jos repossa ei ole
-      # tapahtunut mitään 60 päivään. Viikoittainen pieni commit pitää sen elossa.
-      - name: Heartbeat (maanantain klo 00 UTC ajo)
-        if: github.event_name == 'schedule'
+      # Julkisessa repossa GitHub poistaa ajastuksen käytöstä, jos repossa ei ole tapahtunut mitään
+      # 60 päivään. Heartbeat-commit tehdään, kun edellisestä on yli 6 päivää (ei sidottu tiettyyn
+      # tuntiin, koska GitHub pudottaa suurimman osan ajastetuista ajoista).
+      - name: Heartbeat (jos edellisestä yli 6 päivää)
         run: |
-          if [ "$(date -u +%u%H)" = "100" ]; then
+          last=$(cat status/heartbeat.txt 2>/dev/null || echo 1970-01-01T00:00:00Z)
+          age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) ))
+          if [ "$age" -gt 518400 ]; then
             mkdir -p status
             date -u +%FT%TZ > status/heartbeat.txt
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add status/heartbeat.txt
             git commit -m "Heartbeat $(date -u +%F)"
-            git push
+            git pull --rebase --autostash -q && git push
           fi
     outputs:
       site: ${{ steps.site.outcome }}
@@ -86,3 +88,24 @@ jobs:
       - name: Julkaise GitHub Pagesiin
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # Keruuaukkojen valvonta: jos ruudukkohetki on pudonnut historian ulkopuolelle ilman tiedostoa,
+  # se on menetetty. Ajo merkitään epäonnistuneeksi, jolloin GitHub lähettää siitä ilmoituksen.
+  # Erillinen työ, jotta sivun päivitys ja julkaisu eivät jää tämän takia tekemättä.
+  gaps:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Tarkista menetetyt keruuhetket
+        run: python collector/collect.py --check-gaps
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ vars.HF_REPO }}

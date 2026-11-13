@@ -4,7 +4,7 @@ const STR={
  fi:{locale:"fi-FI",title:"Kelikamera · Suomen tiet nyt",mapLabel:"Kelikamerakartta",
   tabMap:"Kartta",tabRoute:"Reitti",tabWorse:"Liukastumassa",tabRoads:"Tiet",
   from:"Mistä",to:"Minne",myLoc:"Oma sijainti",locating:"Haetaan sijaintia…",locFail:"Sijaintia ei saatu.",
-  searching:"Haetaan reittiä…",routeFail:"Reittiä ei löytynyt.",clearRoute:"Tyhjennä reitti",placeholderFrom:"esim. Kamppi, Helsinki",placeholderTo:"esim. Levi",
+  searching:"Haetaan reittiä…",routeFail:"Reittiä ei löytynyt.",clearRoute:"Tyhjennä reitti",editRoute:"Muuta",privacy:"Tietosuoja: ei evästeitä eikä analytiikkaa. Fontti ja karttakirjasto tulevat tältä sivulta. Karttaruudut haetaan OpenFreeMapista ja kamerakuvat Fintrafficilta, jotka näkevät IP-osoitteesi kuten minkä tahansa sivun latauksessa. Reittihaku lähettää hakusanan Photonille (komoot) ja reitin pisteet OSRM:lle (FOSSGIS); oma sijainti vain painettaessa. Kieli ja viimeisin reitti tallentuvat vain omaan selaimeesi.",camSearchLabel:"Hae kameraa",camSearchPh:"Hae kameraa: nimi, tie tai kunta",camNone:"Ei osumia",placeholderFrom:"esim. Kamppi, Helsinki",placeholderTo:"esim. Levi",
   hm:(h,m)=>h?`n. ${h} h ${m} min`:`n. ${m} min`,onRoute:(n,m)=>`Reitin varrella ${n} kelikameraa, joista ${m} mitattu.`,
   slipN:(parts,km,name)=>`<b>${parts}.</b> Ensimmäinen ${km} km kohdalla: ${name}.`,slipPart:{"jää/kuura":n=>`Jäätä tai kuuraa ${n} kohdassa`,"luminen":n=>`Lunta tai sohjoa ${n} kohdassa`},
   wetN:n=>` Märkää tai kosteaa ${n} kohdassa.`,
@@ -17,7 +17,8 @@ const STR={
   warnings:"Liikennesäävaroitukset",warnSrc:"Ilmatieteen laitos",warnSub:"Ilmatieteen laitoksen viralliset varoitukset",noWarnings:"Ei voimassa olevia liikennesäävaroituksia.",
   inForce:"VOIMASSA",upcoming:"tulossa",official:"Virallinen varoitus · Ilmatieteen laitos",readMore:"Kaikki varoitukset",
   worseIntro:"Kamerat, joissa keli on muuttunut lumiseksi tai jäiseksi viimeisen 6 tunnin aikana, tai kitka on pudonnut selvästi.",
-  noWorse:"Ei huonontuneita kelejä viimeisen 6 tunnin aikana.",ago:h=>h===0?"nyt":`${h} h sitten`,
+  noWorse:"Ei huonontuneita kelejä viimeisen 6 tunnin aikana.",noWorseHere:"Ei huonontuneita kelejä tällä alueella.",
+  scopeLabel:"Rajaus",scopeAll:"Koko maa",scopeView:"Kartan alue",scopeRoute:"Reitti",ago:h=>h===0?"nyt":`${h} h sitten`,
   frictionDrop:(a,b)=>`kitka ${a} → ${b}`,
   road:"Tie",chooseRoad:"Valitse tie",roadStart:"Tien alku",roadEnd:"Tien loppu",cams:n=>`${n} kameraa`,worst:"Pahin kohta",
   measured:"Mitattu",station:"asema",aiSoon:"Ei anturia lähellä · katso kamerakuva",lastRoute:"Viimeisin reitti",thinIce:mm=>`Anturi näkee ohuen kerroksen (${mm}), mutta kitka on vielä hyvä.`,viewMap:{"Tienpinta":"Tienpinta"},close:"Sulje",
@@ -31,7 +32,7 @@ const STR={
  en:{locale:"en-GB",title:"Kelikamera · Finnish roads now",mapLabel:"Road weather camera map",
   tabMap:"Map",tabRoute:"Route",tabWorse:"Getting slippery",tabRoads:"Roads",
   from:"From",to:"To",myLoc:"My location",locating:"Getting your location…",locFail:"Couldn't get your location.",
-  searching:"Finding a route…",routeFail:"No route found.",clearRoute:"Clear route",placeholderFrom:"e.g. Kamppi, Helsinki",placeholderTo:"e.g. Levi",
+  searching:"Finding a route…",routeFail:"No route found.",clearRoute:"Clear route",editRoute:"Change",privacy:"Privacy: no cookies, no analytics. The font and map library are served from this site. Map tiles come from OpenFreeMap and camera images from Fintraffic, who see your IP address as with any page load. Route search sends your query to Photon (komoot) and the route points to OSRM (FOSSGIS); your location only when you press the button. Language and last route are stored only in your own browser.",camSearchLabel:"Find a camera",camSearchPh:"Find a camera: name, road or town",camNone:"No matches",placeholderFrom:"e.g. Kamppi, Helsinki",placeholderTo:"e.g. Levi",
   hm:(h,m)=>h?`about ${h} h ${m} min`:`about ${m} min`,onRoute:(n,m)=>`${n} road weather cameras along the route, ${m} of them measured.`,
   slipN:(parts,km,name)=>`<b>${parts}.</b> The first at ${km} km: ${name}.`,slipPart:{"jää/kuura":n=>`Ice or frost at ${n} ${n===1?"spot":"spots"}`,"luminen":n=>`Snow or slush at ${n} ${n===1?"spot":"spots"}`},
   wetN:n=>` Wet or moist at ${n} ${n===1?"spot":"spots"}.`,
@@ -44,7 +45,8 @@ const STR={
   warnings:"Traffic weather warnings",warnSrc:"Finnish Meteorological Institute",warnSub:"Official warnings from the Finnish Meteorological Institute",noWarnings:"No traffic weather warnings in force.",
   inForce:"IN FORCE",upcoming:"upcoming",official:"Official warning · Finnish Meteorological Institute",readMore:"All warnings",
   worseIntro:"Cameras where the road turned snowy or icy in the last 6 hours, or friction dropped clearly.",
-  noWorse:"No worsening conditions in the last 6 hours.",ago:h=>h===0?"now":`${h} h ago`,
+  noWorse:"No worsening conditions in the last 6 hours.",noWorseHere:"No worsening conditions in this area.",
+  scopeLabel:"Scope",scopeAll:"All Finland",scopeView:"Map area",scopeRoute:"Route",ago:h=>h===0?"now":`${h} h ago`,
   frictionDrop:(a,b)=>`friction ${a} → ${b}`,
   road:"Road",chooseRoad:"Choose a road",roadStart:"Road start",roadEnd:"Road end",cams:n=>`${n} cameras`,worst:"Worst spot",
   measured:"Measured",station:"station",aiSoon:"No sensor nearby · see the camera image",lastRoute:"Last route",thinIce:mm=>`The sensor sees a thin layer (${mm}), but friction is still good.`,viewMap:{"Tienpinta":"Road surface","tienpinta":"Road surface"},close:"Close",
@@ -114,6 +116,7 @@ Promise.all([fetch("data/latest.json").then(r=>r.json()),fetch("data/warnings.js
   DATA=d; WARN=w.warnings||[]; d.cameras.forEach(c=>byId[c.id]=c);
   renderAll(); syncTabIdx(); document.getElementById("key").classList.remove("loading");
   map.loaded()?addLayers():map.on("load",addLayers);
+  map.on("moveend",()=>{ if(worseScope==="view"&&!document.getElementById("p-worse").hidden) renderWorse(worsening()); });
 });
 
 function geojson(){
@@ -201,6 +204,7 @@ function renderAll(){
   // tekstit päivitetään vain, jos ne muuttuvat: uudelleenpiirto laskettaisiin uudeksi LCP:ksi
   const setTab=(id,txt)=>{const sp=document.querySelector(`#${id}>span`); if(sp.textContent!==txt) sp.textContent=txt;};
   setTab("tab-map",T().tabMap); setTab("tab-route",T().tabRoute);
+  document.getElementById("camq").placeholder=T().camSearchPh;
   document.getElementById("from").placeholder=T().placeholderFrom; document.getElementById("to").placeholder=T().placeholderTo;
   document.getElementById("locate").setAttribute("aria-label",T().myLoc); document.getElementById("locate").title=T().myLoc;
   setTab("tab-worse",T().tabWorse); setTab("tab-roads",T().tabRoads);
@@ -282,18 +286,26 @@ function worsening(){
   }
   return out.sort((a,b)=>(b.reason.to-a.reason.to)||(a.since-b.since));
 }
-function renderWorse(list){
-  const el=document.getElementById("p-worse");
-  el.innerHTML=`<p class="blank" style="padding-bottom:8px">${T().worseIntro}</p>`+
+// rajaus: koko maa, kartan näkyvä alue tai valittu reitti (persoona-arvio: lista koski koko maata)
+let worseScope="all";
+function renderWorse(all){
+  const el=document.getElementById("p-worse"), L=T();
+  if(worseScope==="route"&&!ROUTE.geom) worseScope="all";
+  const b=ready()&&worseScope==="view"?map.getBounds():null;
+  const list=all.filter(({c})=>worseScope==="route"?ROUTE.ids.has(c.id):b?b.contains([c.lon,c.lat]):true);
+  const seg=[["all",L.scopeAll],["view",L.scopeView],...(ROUTE.geom?[["route",L.scopeRoute]]:[])];
+  el.innerHTML=`<div class="scope"><div class="lang seg" role="group" aria-label="${L.scopeLabel}">${seg.map(([k,n])=>
+      `<button type="button" data-s="${k}" aria-pressed="${worseScope===k}">${n}</button>`).join("")}</div>
+      ${worseScope!=="all"?`<span class="num">${list.length}/${all.length}</span>`:""}</div>
+    <p class="blank" style="padding-bottom:8px;padding-top:8px">${L.worseIntro}</p>`+
    (list.length?`<ul class="list">${list.map(({c,since,reason})=>{const to=KEYS[reason.to]||"ei mittausta";
-     const what=reason.drop?T().frictionDrop(num(reason.drop[0],"",2),num(reason.drop[1],"",2))
-       :`${T().cls[KEYS[reason.from]]} → ${T().cls[to]}`;
+     const what=reason.drop?L.frictionDrop(num(reason.drop[0],"",2),num(reason.drop[1],"",2))
+       :`${L.cls[KEYS[reason.from]]} → ${L.cls[to]}`;
      return `<li><button class="item" data-id="${c.id}"><span class="sw" style="background:${COLORS[to]}"></span>
-       <span><b>${esc(nameOf(c))}</b><small>${esc(what)}</small></span><span class="ago">${T().ago(Math.max(0,since))}</span></button></li>`}).join("")}</ul>`
-     :`<p class="blank">${T().noWorse}</p>`);
-  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const c=byId[b.dataset.id];
-    if(innerWidth<=720) setCollapsed(true);
-    map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),8),offset:innerWidth<=720?[0,-innerHeight*.28]:[-180,0]}); openCam(c.id)});
+       <span><b>${esc(nameOf(c))}</b><small>${esc(what)}</small></span><span class="ago">${L.ago(Math.max(0,since))}</span></button></li>`}).join("")}</ul>`
+     :`<p class="blank">${worseScope==="all"?L.noWorse:L.noWorseHere}</p>`);
+  el.querySelectorAll(".scope button").forEach(x=>x.onclick=()=>{worseScope=x.dataset.s; renderWorse(worsening());});
+  el.querySelectorAll(".item").forEach(x=>x.onclick=()=>{ if(innerWidth<=720) setCollapsed(true); openCam(x.dataset.id); });
 }
 
 function roadsList(){
@@ -380,6 +392,37 @@ function setupField(id){
   inp.addEventListener("blur",()=>setTimeout(close,150));
 }
 setupField("from"); setupField("to");
+
+/* kamerahaku: ainoa tapa päästä kameraan näppäimistöllä ja ruudunlukijalla (karttapisteet eivät ole fokusoitavia) */
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+(function setupCamSearch(){
+  const inp=document.getElementById("camq"), ul=document.getElementById("camres"); let items=[], sel=-1;
+  const close=()=>{ul.hidden=true;inp.setAttribute("aria-expanded","false");sel=-1};
+  const pick=i=>{const c=items[i]; if(!c) return; inp.value=""; close(); if(isMobile()) setCollapsed(true); openCam(c.id);};
+  const draw=()=>{
+    ul.innerHTML=items.length?items.map((c,i)=>{const k=clsAt(c);return `<li><button type="button" class="cam" role="option" id="camopt-${i}" aria-selected="${i===sel}" data-i="${i}">
+      <span class="sw" style="background:${COLORS[k]}"></span><span>${esc(nameOf(c))}</span><span class="k">${T().cls[k]}</span>${c.mun?`<small>${esc(c.mun)}</small>`:""}</button></li>`}).join("")
+      :`<li><span class="blank" style="display:block;padding:8px 10px">${T().camNone}</span></li>`;
+    ul.hidden=false; inp.setAttribute("aria-expanded","true");
+    if(sel>=0) inp.setAttribute("aria-activedescendant",`camopt-${sel}`); else inp.removeAttribute("aria-activedescendant");
+    ul.querySelectorAll("button").forEach(b=>b.onmousedown=e=>{e.preventDefault();pick(+b.dataset.i)});
+  };
+  inp.addEventListener("input",()=>{
+    const q=norm(inp.value.trim()); if(q.length<2){items=[];close();return}
+    const words=q.split(/\s+/);
+    items=DATA.cameras.map(c=>{const hay=norm(`${nameOf(c)} ${c.name} ${c.mun||""} ${c.road!=null?"tie road vt kt "+c.road:""}`);
+        if(!words.every(w=>hay.includes(w))) return null;
+        return {c,score:(norm(nameOf(c)).startsWith(q)?0:1)+(c.cls?0:.5)};})
+      .filter(Boolean).sort((a,b)=>a.score-b.score||nameOf(a.c).localeCompare(nameOf(b.c))).slice(0,8).map(x=>x.c);
+    sel=-1; draw();
+  });
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"&&items.length){sel=(sel+1)%items.length;draw();e.preventDefault()}
+    else if(e.key==="ArrowUp"&&items.length){sel=(sel-1+items.length)%items.length;draw();e.preventDefault()}
+    else if(e.key==="Enter"&&items.length){pick(sel<0?0:sel);e.preventDefault()}
+    else if(e.key==="Escape"){close()}});
+  inp.addEventListener("blur",()=>setTimeout(close,150));
+})();
 const rstatus=t=>{document.getElementById("rstatus").textContent=t||""};
 document.getElementById("locate").onclick=()=>{
   if(!navigator.geolocation) return rstatus(T().locFail);
@@ -440,7 +483,7 @@ function setRouteVisible(on){
 function renderRoute(){
   const el=document.getElementById("rresult"), L=T();
   document.getElementById("rclear").hidden=!ROUTE.geom;
-  if(!ROUTE.geom){ let last=null; try{last=JSON.parse(localStorage.getItem("route")||"null")}catch(e){}
+  if(!ROUTE.geom){ document.getElementById("p-route").classList.remove("has-route","editing"); if(worseScope==="route") renderWorse(worsening()); let last=null; try{last=JSON.parse(localStorage.getItem("route")||"null")}catch(e){}
     el.innerHTML=(last&&last.from&&last.to?`<button class="last" id="lastroute">${ic("history")}<span>${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></span></button>`:"")+
       `<p class="blank credits" style="border:0">${L.routeSrc}</p>`;
     const lb=document.getElementById("lastroute"); if(lb) lb.onclick=()=>{ROUTE.from=last.from;ROUTE.to=last.to;
@@ -460,7 +503,7 @@ function renderRoute(){
   const pct=cams.length?Math.round((cams.length-meas.length)/cams.length*100):0;
   const kmf=v=>Math.round(v).toLocaleString(L.locale);
   el.innerHTML=`<div class="rsum">
-      <div class="trip">${esc(ROUTE.from.name)} → ${esc(ROUTE.to.name)}</div>
+      <div class="trip"><span>${esc(ROUTE.from.name)} → ${esc(ROUTE.to.name)}</span><button class="btn ghost editroute" id="editroute" type="button">${L.editRoute}</button></div>
       <div class="meta num">${kmf(ROUTE.km)} km · ${L.hm(h,m)}</div>
       <div class="mix" aria-hidden="true">${KEYS.map(k=>`<i style="width:${meas.length?n[k]/meas.length*100:0}%;background:${COLORS[k]}"></i>`).join("")}</div>
       <div class="meta">${L.onRoute(cams.length,meas.length)}</div>
@@ -482,6 +525,10 @@ function renderRoute(){
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const c=byId[b.dataset.id]; if(isMobile()) setCollapsed(true);
     map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),9),offset:isMobile()?[0,-innerHeight*.28]:[-180,0]}); openCam(c.id)});
   const rw=document.getElementById("rwarns"); if(rw) rw.onclick=()=>openWarnList(ROUTE.warns.map(x=>x.i));
+  // puhelimessa lomake piiloon, kun reitti on löytynyt: yhteenveto mahtuu korttiin
+  const pr=document.getElementById("p-route"); pr.classList.add("has-route"); pr.classList.remove("editing");
+  renderWorse(worsening());
+  document.getElementById("editroute").onclick=()=>{pr.classList.add("editing"); document.getElementById("from").focus();};
 }
 
 /* ===================== aikajana ===================== */

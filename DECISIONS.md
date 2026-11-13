@@ -804,3 +804,83 @@ sisällön mukaan mitoittuva alapaneeli hyppäsi alas ja takaisin ylös (yläreu
 - Mitattu headless-Chromessa elementtien sijainnit joka ruudulla toiston alussa: paneeli ja tilarivi eivät liiku;
   ainoa muutos on kertaluonteinen siirtymä nykyhetkestä menneeseen (menneiltä tunneilta on vain kitka, joten
   lukemaosio lyhenee kerran).
+
+## 2026-11-13 · Keruun varmistus ja persoona-arvioiden avoimet kohdat
+
+**Heartbeat ei olisi koskaan toiminut.** Viikoittainen elossapito-commit tehtiin vain, jos ajo osui maanantaille klo 00
+UTC, ja `status/heartbeat.txt`-tiedostoa ei ollut syntynyt kertaakaan. GitHub poistaa julkisen repon ajastuksen 60 päivän
+hiljaisuuden jälkeen, eli kesken talven. Nyt heartbeat tehdään missä tahansa ajossa, jos edellisestä on yli 6 päivää.
+
+**Keruuaukkojen valvonta:** uusi työ `gaps` (`collect.py --check-gaps`) tarkistaa jokaisen ajon jälkeen, onko
+ruudukkohetki pudonnut historian ulkopuolelle (22–30 h) ilman tiedostoa. Jos on, ajo epäonnistuu ja GitHub lähettää
+ilmoituksen. Erillinen työ, ettei sivun päivitys jää tämän takia tekemättä. Tilanne 13.11.: ajojen pisin väli ~8 h,
+ei menetettyjä hetkiä.
+
+**Kamerahaku** (saavutettavuusarvion vakavin avoin löydös): Kartta-välilehden yläreunassa hakukenttä, joka löytää
+kameran nimen, kunnan tai tienumeron osista (ääkköset ja isot kirjaimet samanarvoisia), enintään 8 osumaa,
+nuolinäppäimet ja Enter. Valinta avaa kameran ja siirtää kartan siihen. Ainoa tapa päästä kameraan näppäimistöllä ja
+ruudunlukijalla, koska karttapisteet eivät ole fokusoitavia.
+
+**Reitti puhelimessa:** kun reitti on löytynyt, lomake piiloutuu ja yhteenvedon otsikkoriville tulee "Muuta". Ennen
+lomake ja yhteenveto eivät mahtuneet korttiin.
+
+**Liukastumassa-lista rajattavissa:** Koko maa / Kartan alue / Reitti (jos reitti on valittu), ja rajattuna näkyy
+osuus kaikista (esim. 5/66). Kartan alue päivittyy karttaa liikutettaessa.
+
+**Tarkistus:** kuvakaappaukset työpöydällä ja puhelimessa; Lighthouse 100/100/100/100 (yksi mobiiliajo 87, kaksi
+uusintaa 100).
+
+## 2026-11-13 · Malli: paikallinen DINOv2 + pieni pää (hyväksytty)
+
+**Miksi paikallinen eikä pilven kuva-API (esim. GPT/Claude vision):**
+- **Kustannus:** ~800 kameraa tunnin välein ≈ 19 000 kuvaa/vrk. API-kutsuina jatkuva kuukausikulu; pieni malli ajetaan
+  GitHub Actionsissa ilmaiseksi.
+- **Mitattavuus ja toistettavuus:** tarkkuus mitataan kameroilla, joita malli ei ole nähnyt, ja sama kuva antaa aina
+  saman vastauksen. Palveluntarjoajan mallipäivitys ei muuta tuloksia kesken talven.
+- **"Mitä malli katsoi" -lämpökartta** vaatii pääsyn mallin sisäisiin tietoihin; API ei anna sitä.
+- **Ei avaimia eikä toimittajariippuvuutta:** sivu ja keruu pysyvät ilmaisina ja avoimina.
+
+**Malli:** DINOv2 ViT-S/14 (Meta, Apache 2.0) jäädytettynä piirteiden irrottajana + pieni koulutettava pää, joka antaa
+keliluokan ja kitkan (luku). Perustelu: valmiiksi opetettu piirreirrottaja pärjää vähällä talvidatalla (raja 30 eri
+kameraa per luokka); alle 25 M parametria, joten päättely onnistuu prosessorilla Actionsissa (arvio < 1 min / 800 kuvaa).
+**Vertailukohta:** kokonaan hienosäädetty EfficientNet-B0. Valitaan se, joka tunnistaa liukkaan tien paremmin
+kameroilla, joita malli ei ole nähnyt (recall ja precision, kattavuus aina yhdessä tarkkuuden kanssa).
+**Jätettiin:** pilvi-API (yllä); isot mallit (ViT-L, CLIP-L), jotka eivät mahdu ilmaiseen prosessoriajoon.
+
+## 2026-11-13 · Ulkoiset yhteydet ja tietosuoja: fontti ja karttakirjasto omasta reposta
+
+**Löydös (käyttäjä):** sivu latasi Geist-fontin Google Fontsista ja MapLibren unpkg-CDN:stä. Agentti oli valinnut
+CDN-lataukset oletuksena, koska ne ovat nopeimmat lisätä; kukaan ei ollut kysynyt, kenelle kävijän tiedot menevät.
+
+**Kartoitus: mitä kukin ulkoinen palvelin näkee** (jokainen pyyntö sisältää vähintään IP-osoitteen, selaimen
+tunnisteen ja yleensä viittaavan sivun osoitteen):
+
+| Palvelin | Milloin | Mitä se saa | Tarpeen? | Nyt |
+|---|---|---|---|---|
+| fonts.googleapis.com / fonts.gstatic.com (Google) | jokainen sivulataus | IP, selain, sivun osoite | ei | **poistettu**, fontti omasta reposta |
+| unpkg.com (CDN) | jokainen sivulataus | IP, selain, sivun osoite | ei | **poistettu**, MapLibre omasta reposta |
+| tiles.openfreemap.org | jokainen sivulataus ja kartan liikutus | IP, selain, katsottu kartta-alue (ruudut) | kyllä, kartta | säilyy, kerrotaan tietosuojatekstissä |
+| weathercam.digitraffic.fi, tie.digitraffic.fi (Fintraffic) | kameraa avattaessa | IP, selain, mikä kamera | kyllä, kuvat ja ottoaika | säilyy, kerrotaan |
+| photon.komoot.io | reittihaussa kirjoitettaessa | IP, kirjoitettu hakusana | kyllä, paikkahaku | säilyy, kerrotaan |
+| routing.openstreetmap.de (FOSSGIS OSRM) | reittiä haettaessa | IP, lähtö- ja määränpisteen koordinaatit (myös oma sijainti, jos painettu) | kyllä, reitti | säilyy, kerrotaan |
+| GitHub Pages | jokainen sivulataus | IP (palvelimen lokit) | kyllä, sivun palvelin | säilyy |
+| Selaimen `localStorage` | kielen vaihto, reitin haku | kieli, viimeisin reitti (nimet ja koordinaatit) | kyllä, mukavuus | vain käyttäjän laitteella |
+
+Google Fonts on näistä merkittävin: Münchenin alioikeus katsoi 2022, että Google Fontsin lataaminen Googlelta ilman
+suostumusta rikkoo GDPR:ää (IP-osoite siirtyy Googlelle). Fintraffic-kuvia sivu ei kopioi eikä tallenna; se näyttää
+ne heidän osoitteistaan kuten Fintraffic itse, ja aikajanan kuvat ovat Digitrafficin julkaisemat 24 h.
+
+**Korjaus:**
+- Geist (OFL 1.1, lisenssi `site/vendor/geist/LICENSE`) ja MapLibre 4.7.1 (BSD-3, `site/vendor/maplibre/LICENSE.txt`)
+  omasta reposta; fontti esiladataan. Google- ja unpkg-esiyhteydet poistettu.
+- Tietosuojateksti sivun alalaitaan (suomi ja englanti): ei evästeitä eikä analytiikkaa, mitkä palvelut näkevät mitä.
+- **Vartija:** `tools/external_hosts.py` avaa sivun, avaa kameran ja listaa kaikki ulkoiset palvelimet. Sallittu lista
+  on koodissa; uusi tuntematon palvelin = virhe. Vanha julkaistu versio: unpkg.com ja fonts.googleapis.com
+  hylätään; uusi versio: vain OpenFreeMap ja Digitraffic.
+
+**Suorituskyky:** MapLibre omasta reposta on pakattuna 211 kt (sama kuin unpkg:sta). Paikallinen testipalvelin ei
+pakkaa, jolloin mobiilin LCP näytti 6,1 s; pakkaavalla testipalvelimella mobiili 100 ja LCP 1,1 s (ennen 1,5 s, koska
+Google-fontin erillinen yhteys jäi pois).
+
+**Prosessiin:** ulkoiset resurssit omasta reposta oletuksena; jokainen uusi ulkoinen palvelin perustellaan ja lisätään
+`ALLOWED`-listaan ja tietosuojatekstiin.
