@@ -4,7 +4,7 @@ const STR={
  fi:{locale:"fi-FI",title:"Kelikamera · Suomen tiet nyt",mapLabel:"Kelikamerakartta",
   tabMap:"Kartta",tabRoute:"Reitti",tabWorse:"Liukastumassa",tabRoads:"Tiet",
   from:"Mistä",to:"Minne",myLoc:"Oma sijainti",locating:"Haetaan sijaintia…",locFail:"Sijaintia ei saatu.",
-  searching:"Haetaan reittiä…",routeFail:"Reittiä ei löytynyt.",clearRoute:"Tyhjennä reitti",editRoute:"Muuta",privacy:"Tietosuoja: ei evästeitä eikä analytiikkaa. Fontti ja karttakirjasto tulevat tältä sivulta. Karttaruudut haetaan OpenFreeMapista ja kamerakuvat Fintrafficilta, jotka näkevät IP-osoitteesi kuten minkä tahansa sivun latauksessa. Reittihaku lähettää hakusanan Photonille (komoot) ja reitin pisteet OSRM:lle (FOSSGIS); oma sijainti vain painettaessa. Kieli ja viimeisin reitti tallentuvat vain omaan selaimeesi.",camSearchLabel:"Hae kameraa",camSearchPh:"Hae kameraa: nimi, tie tai kunta",camNone:"Ei osumia",placeholderFrom:"esim. Kamppi, Helsinki",placeholderTo:"esim. Levi",
+  searching:"Haetaan reittiä…",routeFail:"Reittiä ei löytynyt.",clearRoute:"Tyhjennä reitti",editRoute:"Muuta",privacySum:"Tietosuoja · ei evästeitä, ei analytiikkaa",privacyItems:[["Fontti ja kartta","tältä sivulta, ei Googlelta eikä CDN:stä"],["Karttaruudut","OpenFreeMap näkee IP-osoitteesi ja katsotun alueen"],["Kamerakuvat","Fintraffic näkee IP-osoitteesi ja avatun kameran"],["Reittihaku","hakusana Photonille (komoot), reitin pisteet OSRM:lle (FOSSGIS); oma sijainti vain painettaessa"],["Selaimessasi","kieli ja viimeisin reitti, ei muuta"]],camSearchLabel:"Hae kameraa",camSearchPh:"Hae kameraa: nimi, tie tai kunta",camNone:"Ei osumia",placeholderFrom:"esim. Kamppi, Helsinki",placeholderTo:"esim. Levi",
   hm:(h,m)=>h?`n. ${h} h ${m} min`:`n. ${m} min`,onRoute:(n,m)=>`Reitin varrella ${n} kelikameraa, joista ${m} mitattu.`,
   slipN:(parts,km,name)=>`<b>${parts}.</b> Ensimmäinen ${km} km kohdalla: ${name}.`,slipPart:{"jää/kuura":n=>`Jäätä tai kuuraa ${n} kohdassa`,"luminen":n=>`Lunta tai sohjoa ${n} kohdassa`},
   wetN:n=>` Märkää tai kosteaa ${n} kohdassa.`,
@@ -32,7 +32,7 @@ const STR={
  en:{locale:"en-GB",title:"Kelikamera · Finnish roads now",mapLabel:"Road weather camera map",
   tabMap:"Map",tabRoute:"Route",tabWorse:"Getting slippery",tabRoads:"Roads",
   from:"From",to:"To",myLoc:"My location",locating:"Getting your location…",locFail:"Couldn't get your location.",
-  searching:"Finding a route…",routeFail:"No route found.",clearRoute:"Clear route",editRoute:"Change",privacy:"Privacy: no cookies, no analytics. The font and map library are served from this site. Map tiles come from OpenFreeMap and camera images from Fintraffic, who see your IP address as with any page load. Route search sends your query to Photon (komoot) and the route points to OSRM (FOSSGIS); your location only when you press the button. Language and last route are stored only in your own browser.",camSearchLabel:"Find a camera",camSearchPh:"Find a camera: name, road or town",camNone:"No matches",placeholderFrom:"e.g. Kamppi, Helsinki",placeholderTo:"e.g. Levi",
+  searching:"Finding a route…",routeFail:"No route found.",clearRoute:"Clear route",editRoute:"Change",privacySum:"Privacy · no cookies, no analytics",privacyItems:[["Font and map","served from this site, not Google or a CDN"],["Map tiles","OpenFreeMap sees your IP address and the area you view"],["Camera images","Fintraffic sees your IP address and the camera you open"],["Route search","your query goes to Photon (komoot), route points to OSRM (FOSSGIS); your location only when you press the button"],["In your browser","language and last route, nothing else"]],camSearchLabel:"Find a camera",camSearchPh:"Find a camera: name, road or town",camNone:"No matches",placeholderFrom:"e.g. Kamppi, Helsinki",placeholderTo:"e.g. Levi",
   hm:(h,m)=>h?`about ${h} h ${m} min`:`about ${m} min`,onRoute:(n,m)=>`${n} road weather cameras along the route, ${m} of them measured.`,
   slipN:(parts,km,name)=>`<b>${parts}.</b> The first at ${km} km: ${name}.`,slipPart:{"jää/kuura":n=>`Ice or frost at ${n} ${n===1?"spot":"spots"}`,"luminen":n=>`Snow or slush at ${n} ${n===1?"spot":"spots"}`},
   wetN:n=>` Wet or moist at ${n} ${n===1?"spot":"spots"}.`,
@@ -197,6 +197,7 @@ function renderAll(){
   document.getElementById("slider").setAttribute("aria-label",LANG==="en"?"Timeline, last 24 hours":"Aikajana, viimeiset 24 tuntia");
   if(!foldBtn.getAttribute("aria-label")||!keyEl.classList.contains("collapsed")) foldBtn.setAttribute("aria-label",keyEl.classList.contains("collapsed")?T().expand:T().collapse);
   document.querySelectorAll("[data-t]").forEach(el=>el.textContent=T()[el.dataset.t]);
+  document.getElementById("privacyList").innerHTML=T().privacyItems.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
   document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
   const u=document.getElementById("updated"); const today=new Date(DATA.run).toDateString()===new Date().toDateString();
   u.textContent=isMobile()&&today?fmtClock(DATA.run):fmt(DATA.run,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=DATA.run;

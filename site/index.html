@@ -80,7 +80,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .tabs .badge[hidden]{display:none}
 .badge,.tabs .badge{display:inline-block;min-width:18px;margin-left:6px;padding:1px 5px;border-radius:var(--r-xs);background:var(--jaa);color:#140608;font-size:11px;line-height:15px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
 .tabpanel{overflow:auto}
-.key.loading #warnsec,.key.loading .credits{visibility:hidden}
+.key.loading #warnsec,.key.loading .credits,.key.loading .privacy{visibility:hidden}
 @media (min-width:721px){#rows:empty{min-height:288px}}
 .fold{display:none;width:36px;height:32px;place-items:center;border-radius:var(--r-md);color:var(--text-2)}
 .fold svg{transition:transform .2s var(--ease-out)}
@@ -270,6 +270,17 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 
 .credits{box-shadow:inset 0 1px 0 var(--line);padding:12px 16px 14px;font-size:12px;line-height:1.5;color:var(--text-3)}
 .credits a{color:var(--text-2)}
+/* tietosuoja: avattava, tiivis rivi kortin alalaidassa */
+.privacy{box-shadow:inset 0 1px 0 var(--line);font-size:12px;color:var(--text-2)}
+.privacy summary{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;list-style:none;min-height:40px}
+.privacy summary::-webkit-details-marker{display:none}
+.privacy summary .ic{width:14px;height:14px;color:var(--text-3)}
+.privacy summary .chev{margin-left:auto;transition:transform .2s var(--ease-out)}
+.privacy[open] summary .chev{transform:rotate(90deg)}
+.privacy dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;padding:2px 16px 14px;line-height:1.45}
+.privacy dt{color:var(--text)}
+.privacy dd{color:var(--text-3)}
+@media (hover:hover) and (pointer:fine){.privacy summary:hover{color:var(--text)}}
 .tabpanel{scrollbar-width:thin;scrollbar-color:var(--surface-3) transparent}
 .tabpanel::-webkit-scrollbar,.panel .scroll::-webkit-scrollbar{width:6px}
 .tabpanel::-webkit-scrollbar-thumb,.panel .scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
@@ -381,7 +392,8 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
     <div class="sec explain"><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></div>
     <ul class="rows" id="rows"></ul>
     <div class="sec" id="warnsec"></div>
-    <p class="credits"><span data-t="data"></span>: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth<br><span data-t="privacy"></span></p>
+    <p class="credits"><span data-t="data"></span>: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
+    <details class="privacy"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span data-t="privacySum"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><dl id="privacyList"></dl></details>
   </div>
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
     <div class="rform">

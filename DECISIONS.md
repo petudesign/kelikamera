@@ -884,3 +884,7 @@ Google-fontin erillinen yhteys jäi pois).
 
 **Prosessiin:** ulkoiset resurssit omasta reposta oletuksena; jokainen uusi ulkoinen palvelin perustellaan ja lisätään
 `ALLOWED`-listaan ja tietosuojatekstiin.
+
+**Jatko (13.11.):** tietosuojateksti oli yksi pitkä kappale lähdetietojen alla. Nyt se on avattava rivi
+"Tietosuoja · ei evästeitä, ei analytiikkaa" (kilpi-ikoni), ja auki se näyttää taulukon: mikä palvelu, mitä se näkee.
+Suljettuna vie yhden rivin; olennaisin (ei evästeitä, ei analytiikkaa) näkyy avaamatta.
