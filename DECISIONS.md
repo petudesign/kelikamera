@@ -894,3 +894,20 @@ Suljettuna vie yhden rivin; olennaisin (ei evästeitä, ei analytiikkaa) näkyy 
 rivin tekstejä ei vielä ollut. Korjaus: `build_site.py` lisää skriptin osoitteeseen sisällön tiivisteen
 (`app.js?v=<sha1>`) jokaisessa sivun rakennuksessa. Tiiviste vaihtuu vain, kun `app.js` muuttuu, joten uusi sivu hakee
 aina siihen kuuluvan skriptin, ja muuten välimuisti toimii normaalisti.
+
+## 2026-11-15 · Aikajana ei koskaan korttien alla (läppärit)
+
+**Havainto (käyttäjä):** 1280 px:n tai kapeammalla läppärillä aikajana meni korttien päälle. Mittaus vahvisti:
+1280×720 aikajana leikkasi sekä vasemman kortin että avoimen kamerapaneelin, 1024 px ja 800 px kamerapaneelin.
+Syy: aikajana oli keskitetty koko näytön leveydelle (560 px), eikä se tiennyt korttien paikoista.
+
+**Korjaus (CSS, ei JS:ää):**
+- **Vähintään 1240 px:** aikajana keskitetään korttien väliseen tilaan (vasen reuna 392 px), ja kun kamerapaneeli
+  avautuu, oikea reuna väistää paneelin verran (`body:has(.panel.on)`, liukuva siirtymä 320 ms, vähennetty liike:
+  ei siirtymää). Raja 1240 px valittiin niin, että paneelin ollessa auki aikajanalle jää vähintään ~450 px.
+- **721–1239 px:** aikajana koko leveydellä alareunassa, ja vasen kortti sekä kamerapaneeli loppuvat sen yläpuolelle.
+- **Vartija:** `tools/overlap_check.py` mittaa päällekkäisen alueen leveyksillä 800–1920 px, paneeli kiinni ja auki;
+  exit 1, jos jokin on päällekkäin. Ennen korjausta 5 tapausta päällekkäin, nyt 0/16.
+
+**Jätettiin:** aikajanan siirto korttien sisään (vie tilaa kortin listoilta) ja kapeneminen alle ~450 px:n
+(pylväät ja kellonajat eivät enää mahdu luettavasti).

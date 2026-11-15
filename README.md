@@ -19,6 +19,7 @@ site/                  karttasivu (staattinen, MapLibre, suomi/englanti): index.
 tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
 tools/break_ui.py      hajota UI: sivu pahimman tapauksen datalla (pitkät nimet, tyhjä, kaikki jäässä, rikki)
 tools/external_hosts.py mihin ulkoisiin palvelimiin sivu ottaa yhteyttä (kenelle kävijän IP menee); exit 1, jos sallimaton
+tools/overlap_check.py jääkö aikajana korttien alle leveyksillä 800–1920 px; exit 1, jos päällekkäin
 collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
 .github/workflows/     ajastus GitHub Actionsissa (tunnin välein; puuttuvat hetket haetaan jälkikäteen)
 ```
