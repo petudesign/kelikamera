@@ -40,9 +40,11 @@ class Chrome:
         port = _free_port()
         self.proc = subprocess.Popen(
             [CHROME, "--headless=new", f"--remote-debugging-port={port}", f"--user-data-dir={tempfile.mkdtemp()}",
-             "--hide-scrollbars", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "about:blank"],
+             "--hide-scrollbars", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
+             *(["--no-sandbox"] if os.environ.get("CI") else []),  # GitHubin Ubuntu-koneella ei hiekkalaatikkoa
+             "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(50):
+        for _ in range(100):
             try:
                 tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
                 self.ws = websocket.create_connection(
@@ -50,6 +52,9 @@ class Chrome:
                 break
             except Exception:
                 time.sleep(0.2)
+        else:
+            self.proc.terminate()
+            raise RuntimeError(f"Chrome ei käynnistynyt ({CHROME or 'ei löytynyt; aseta CHROME'})")
         self.send("Page.enable")
         self.send("Page.addScriptToEvaluateOnNewDocument", source=CAPTURE_ERRORS)
         self.resize(*self.size)
