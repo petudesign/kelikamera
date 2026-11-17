@@ -2,10 +2,10 @@ name: Keruu
 
 on:
   schedule:
-    # Joka tunti: sivu päivittyy, ja keräin hakee Digitrafficin ~23 h historiasta kaikki puuttuvat
-    # keruuhetket (joka 3. tasatunti + talvitihennys). GitHub pudottaa ajastettuja ajoja, mutta data
-    # ei katoa, kunhan yksi ajo menee läpi vuorokaudessa.
-    - cron: "17 * * * *"      # minuutilla 17 (tasatunnit ovat GitHubissa ruuhkaisia)
+    # Neljästi tunnissa: GitHub pudottaa suurimman osan ajastetuista ajoista (tunnin ajastuksella läpi meni
+    # 4–10 h välein), joten yrityksiä on useampi, jotta kartta pysyy tuoreena. Keräin hakee Digitrafficin
+    # ~23 h historiasta kaikki puuttuvat keruuhetket, joten data ei katoa, kunhan yksi ajo menee läpi vuorokaudessa.
+    - cron: "7,22,37,52 * * * *"   # ei tasatunneilla (ruuhkaisia GitHubissa)
   workflow_dispatch:          # käsin käynnistys Actions-välilehdeltä
 
 permissions:
