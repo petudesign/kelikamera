@@ -964,3 +964,8 @@ kehityskomennot. Pois GitHub-käyttöönoton ohje (repo on jo käytössä, ja ku
 tiedostokohtainen luettelo (moduulien docstringit kertovat saman ajan tasalla).
 README käännettiin englanniksi (julkinen repo, kansainväliset lukijat); muut dokumentit pysyvät suomeksi, ja
 README kertoo sen.
+
+**Kamerat puuttuivat joskus avattaessa (17.11.):** käynnistys tarkisti `map.loaded()`, joka on false aina kun ruutuja
+latautuu. Jos data tuli kartan load-tapahtuman jälkeen ruutujen vielä latautuessa, kameratasoa jäätiin odottamaan
+tapahtumaa, joka ei enää tullut. Nyt load-tapahtuma otetaan talteen lupauksena (`mapReady`), joten järjestyksellä ei
+ole väliä. Vika toistettiin viivästämällä dataa, ja korjaus todettiin samalla testillä.

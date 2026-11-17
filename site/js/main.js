@@ -4,6 +4,6 @@ Promise.all([fetch("data/latest.json").then(r=>r.json()),fetch("data/warnings.js
 .then(([d,w])=>{
   DATA=d; WARN=w.warnings||[]; d.cameras.forEach(c=>byId[c.id]=c);
   renderAll(); syncTabIdx(); document.getElementById("key").classList.remove("loading");
-  map.loaded()?addLayers():map.on("load",addLayers);
+  mapReady.then(addLayers);
   map.on("moveend",()=>{ if(worseScope==="view"&&!document.getElementById("p-worse").hidden) renderWorse(worsening()); });
 });

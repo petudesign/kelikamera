@@ -15,7 +15,9 @@ function lockToFinland(){
   map.setMinZoom(map.getZoom()-.2);
   map.setMaxBounds([[b.getWest()-dx,b.getSouth()-dy],[b.getEast()+dx,b.getNorth()+dy]]);
 }
-map.once("load",lockToFinland);
+// map.loaded() on false aina kun ruutuja latautuu, joten load-tapahtuma talteen lupauksena
+const mapReady=new Promise(r=>map.once("load",r));
+mapReady.then(lockToFinland);
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(lockToFinland,150)});
 
 function geojson(){
