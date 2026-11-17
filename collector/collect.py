@@ -36,6 +36,9 @@ from pathlib import Path
 import requests
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).parent))
+from summary import station_coords, write_summary  # noqa: E402
+
 API = "https://tie.digitraffic.fi"
 HEADERS = {
     # Digitraffic pyytää tunnistamaan sovelluksen tällä otsakkeella.
@@ -422,6 +425,7 @@ def run(limit: int | None, dry_run: bool = False) -> list[Path]:
 
     paths = []
     newest = max(t for t, _, _ in jobs)
+    coords = station_coords()
     for t, kind, chosen in jobs:
         with ThreadPoolExecutor(IMAGE_WORKERS) as ex:
             images = list(ex.map(lambda c: fetch_image(c[3]), chosen))
@@ -492,6 +496,12 @@ def run(limit: int | None, dry_run: bool = False) -> list[Path]:
         path = day_dir / f"{stamp_of(t)}.tar"
         path.write_bytes(tar_buf.getvalue())
         paths.append(path)
+        # tunnisteyhteenveto rinnalle: luokkalaskuri ei tarvitse kuvia (summary.py). Puuttuva yhteenveto
+        # ei estä kuvien tallennusta; päivittäinen "Opetusdatan valmius" -ajo täydentää sen.
+        try:
+            paths.append(write_summary(path, coords))
+        except Exception as e:
+            print(f"::warning::tunnisteyhteenveto {path.name}: {e}", file=sys.stderr)
         print(f"  tiedosto: {path.relative_to(ROOT)} ({path.stat().st_size / 1e6:.1f} Mt, {len(manifest)} kuvaa)")
 
     print(f"  valmis {(datetime.now(timezone.utc) - started).total_seconds():.0f} s")

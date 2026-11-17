@@ -1,136 +1,129 @@
 """Luokkalaskuri: montako käyttökelpoista esimerkkiä kustakin kelistä on kertynyt.
 
-  python collector/count.py          # paikalliset ajot (out/)
-  python collector/count.py --hf     # lataa ensin Hugging Facesta (vaatii: hf auth login)
+  python collector/count.py              # paikalliset ajot (out/), yhteenveto lasketaan tarvittaessa
+  python collector/count.py --hf         # vain tunnisteyhteenvedot Hugging Facesta (ei kuvia; vaatii HF_TOKEN
+                                         # tai `hf auth login`)
+  python collector/count.py --hf --md    # sama Markdown-taulukkona (Actionsin yhteenvetoon)
 
-Kertoo per luokka: kuvat, eri kamerat (tärkeämpi kuin kuvamäärä), päivä/yö (IR) ja
-mediaanikitkan. Lisäksi miksi kuvia hylättiin ja kuinka kaukana kamerat ovat asemistaan.
-Tulos myös tiedostoon out/counts.json.
+Laskee jokaisen keruuhetken tunnisteyhteenvedosta (<hetki>.labels.json, ks. summary.py), ei kuvista.
+Käyttökelpoinen esimerkki = tienpintakulma, luokka tiedossa, ei ohut kerros, asema enintään MAX_KM päässä.
+Kertoo per luokka: kuvat, eri kamerat (tärkeämpi kuin kuvamäärä), yökuvat (IR), mediaanikitkan ja
+ohuet kerrokset erikseen. Lisäksi hylkäyssyyt. Tulos myös tiedostoon out/counts.json.
 """
 from __future__ import annotations
 
 import argparse
 import collections
-import gzip
-import io
 import json
-import math
 import os
 import statistics
 import sys
-import tarfile
 from pathlib import Path
 
-import requests
-from PIL import Image, ImageStat
-
 sys.path.insert(0, str(Path(__file__).parent))
-from labels import CLASSES, label, station_index  # noqa: E402
+from labels import CLASSES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "out"
-CACHE = ROOT / "cache"
-READY_CAMERAS = 30  # "tarpeeksi" = näin monta eri kameraa luokassa (alustava raja)
+READY_CAMERAS = 30  # "valmis" = näin monta eri kameraa luokassa
+MAX_KM = 5.0        # sama raja kuin kartalla: kauempana olevan aseman mittaus ei kerro kameran kelistä
 
 
-def is_ir(jpeg: bytes) -> bool:
-    """Yökuva infrapunalla = käytännössä harmaasävy (värikanavat samat)."""
-    im = Image.open(io.BytesIO(jpeg)).convert("RGB").resize((64, 36))
-    r, g, b = (ImageStat.Stat(c).mean[0] for c in im.split())
-    return abs(r - g) + abs(g - b) < 3
+def summaries_local() -> list[dict]:
+    """Paikalliset ajot: valmis .labels.json, tai lasketaan tar-tiedostosta (ja tallennetaan)."""
+    from summary import station_coords, write_summary
+    tars = sorted({p.name: p for p in OUT.glob("**/*.tar") if "hf" not in p.parts}.values())
+    coords = None
+    out = []
+    for t in tars:
+        lj = t.with_name(t.stem + ".labels.json")
+        if not lj.exists():
+            coords = coords or station_coords()
+            write_summary(t, coords)
+        out.append(json.loads(lj.read_text()))
+    return out
 
 
-def station_coords() -> dict[int, tuple[float, float]]:
-    """{asema_id: (lon, lat)} – sama välimuisti kuin keräimellä (v2-rajapinta)."""
-    from collect import weather_stations
-    return {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
-
-
-def km(lat1, lon1, lat2, lon2) -> float:
-    p = math.pi / 180
-    a = (math.sin((lat2 - lat1) * p / 2) ** 2
-         + math.cos(lat1 * p) * math.cos(lat2 * p) * math.sin((lon2 - lon1) * p / 2) ** 2)
-    return 12742 * math.asin(math.sqrt(a))
-
-
-def fetch_from_hf() -> None:
+def summaries_hf() -> list[dict]:
+    """Vain yhteenvedot Hugging Facesta (muutama kt per keruuhetki)."""
     from huggingface_hub import snapshot_download
     repo = os.environ.get("HF_REPO", "petudesign/kelikamera")
-    snapshot_download(repo, repo_type="dataset", allow_patterns="data/**",
-                      local_dir=OUT / "hf")
+    d = Path(snapshot_download(repo, repo_type="dataset", allow_patterns="data/**/*.labels.json",
+                               local_dir=OUT / "hf", token=os.environ.get("HF_TOKEN")))
+    return [json.loads(p.read_text()) for p in sorted(d.glob("data/**/*.labels.json"))]
+
+
+def count(sums: list[dict]) -> dict:
+    per = {c: {"images": 0, "cameras": set(), "night": 0, "friction": [], "thin": 0, "thin_cams": set()} for c in CLASSES}
+    reasons = collections.Counter()
+    kinds = collections.Counter(s.get("kind", "vanha ajo") for s in sums)
+    surface = 0
+    for s in sums:
+        for it in s["items"]:
+            if not it.get("surface"):
+                reasons["ei tienpintakulma"] += 1
+                continue
+            surface += 1
+            if it.get("km") is not None and it["km"] > MAX_KM:
+                reasons[f"asema yli {MAX_KM:g} km"] += 1
+                continue
+            if it.get("class") is None:
+                reasons[it.get("reason") or "ei luokkaa"] += 1
+                continue
+            c = per[it["class"]]
+            if it.get("thin"):
+                c["thin"] += 1
+                c["thin_cams"].add(it["camera"])
+                continue
+            c["images"] += 1
+            c["cameras"].add(it["camera"])
+            c["night"] += bool(it.get("ir"))
+            if it.get("friction") is not None:
+                c["friction"].append(it["friction"])
+    classes = {}
+    for cls in CLASSES:
+        c = per[cls]
+        classes[cls] = {"images": c["images"], "cameras": len(c["cameras"]), "night": c["night"],
+                        "friction_median": statistics.median(c["friction"]) if c["friction"] else None,
+                        "ready": len(c["cameras"]) >= READY_CAMERAS,
+                        "thin_images": c["thin"], "thin_cameras": len(c["thin_cams"])}
+    return {"runs": len(sums), "kinds": dict(kinds), "surface_images": surface,
+            "classes": classes, "rejected": dict(reasons.most_common())}
+
+
+def show(r: dict, md: bool) -> None:
+    kinds = ", ".join(f"{k} {n}" for k, n in sorted(r["kinds"].items()))
+    if md:
+        print(f"### Opetusdatan valmius\n\nKeruuhetkiä {r['runs']} ({kinds}) · tienpintakuvia {r['surface_images']} · "
+              f"raja {READY_CAMERAS} eri kameraa per luokka, asema ≤ {MAX_KM:g} km\n")
+        print("| Luokka | Kuvia | Eri kameroita | Yökuvia | Kitka (med.) | Valmis | Ohut kerros (pois) |")
+        print("|---|---:|---:|---:|---:|:---:|---:|")
+        for cls, c in r["classes"].items():
+            fr = f"{c['friction_median']:.2f}" if c["friction_median"] is not None else "–"
+            thin = f"{c['thin_images']} / {c['thin_cameras']} kam." if c["thin_images"] else ""
+            print(f"| {cls} | {c['images']} | {c['cameras']} | {c['night']} | {fr} | {'✓' if c['ready'] else '–'} | {thin} |")
+        print("\nHylätyt: " + ", ".join(f"{k} {n}" for k, n in r["rejected"].items()))
+        return
+    print(f"Keruuhetkiä: {r['runs']} ({kinds}) · tienpintakuvia: {r['surface_images']}\n")
+    print(f"{'luokka':<11}{'kuvia':>7}{'kameroita':>11}{'yö (IR)':>9}{'kitka med.':>12}  valmis?   ohut kerros (pois)")
+    for cls, c in r["classes"].items():
+        fr = f"{c['friction_median']:.2f}" if c["friction_median"] is not None else "–"
+        print(f"{cls:<11}{c['images']:>7}{c['cameras']:>11}{c['night']:>9}{fr:>12}  {'✓' if c['ready'] else '–'}"
+              + (f"         {c['thin_images']} kuvaa / {c['thin_cameras']} kameraa" if c["thin_images"] else ""))
+    print("\nHylätyt:")
+    for k, n in r["rejected"].items():
+        print(f"  {n:>6}  {k}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--hf", action="store_true", help="lataa ajot ensin Hugging Facesta")
+    ap.add_argument("--hf", action="store_true", help="tunnisteyhteenvedot Hugging Facesta (ei kuvia)")
+    ap.add_argument("--md", action="store_true", help="tulostus Markdown-taulukkona")
     args = ap.parse_args()
-    if args.hf:
-        fetch_from_hf()
-
-    tars = sorted({p.name: p for p in OUT.glob("**/*.tar")}.values())  # sama ajo vain kerran
-    coords = station_coords()
-
-    per = {c: {"images": 0, "cameras": set(), "night": 0, "friction": [], "thin": 0, "thin_cams": set()} for c in CLASSES}
-    reasons = collections.Counter()
-    dist = {}
-    surface_only = 0
-    kinds = collections.Counter()
-
-    for path in tars:
-        t = tarfile.open(path)
-        meta = json.load(t.extractfile("manifest.json"))
-        kinds[meta.get("kind", "vanha ajo")] += 1
-        stations = station_index(json.loads(gzip.decompress(t.extractfile("weather.json.gz").read())))
-        for item in meta["items"]:
-            if not item.get("surfaceView"):
-                reasons["ei tienpintakulma"] += 1
-                continue
-            surface_only += 1
-            lab = label(item, stations)
-            st = coords.get(item.get("weatherStation"))
-            if st:
-                dist[item["camera"]] = km(item["lat"], item["lon"], st[1], st[0])
-            if lab["class"] is None:
-                reasons[lab["reason"]] += 1
-                continue
-            c = per[lab["class"]]
-            if lab.get("thin"):  # ohut kerros: ei mukana luokkakoulutuksessa, lasketaan erikseen
-                c["thin"] += 1
-                c["thin_cams"].add(item["camera"])
-                continue
-            c["images"] += 1
-            c["cameras"].add(item["camera"])
-            c["night"] += is_ir(t.extractfile(f"images/{item['preset']}.jpg").read())
-            if lab["friction"] is not None:
-                c["friction"].append(lab["friction"])
-
-    print(f"Ajoja: {len(tars)} ({', '.join(f'{k} {n}' for k, n in kinds.most_common())}) · tienpintakuvia: {surface_only}\n")
-    print(f"{'luokka':<11}{'kuvia':>7}{'kameroita':>11}{'yö (IR)':>9}{'kitka med.':>12}  valmis?   ohut kerros (pois)")
-    summary = {}
-    for cls in CLASSES:
-        c = per[cls]
-        fr = statistics.median(c["friction"]) if c["friction"] else None
-        ready = len(c["cameras"]) >= READY_CAMERAS
-        print(f"{cls:<11}{c['images']:>7}{len(c['cameras']):>11}{c['night']:>9}"
-              f"{(f'{fr:.2f}' if fr is not None else '–'):>12}  {'✓' if ready else '–'}"
-              + (f"         {c['thin']} kuvaa / {len(c['thin_cams'])} kameraa" if c["thin"] else ""))
-        summary[cls] = {"images": c["images"], "cameras": len(c["cameras"]), "night": c["night"],
-                        "friction_median": fr, "ready": ready,
-                        "thin_images": c["thin"], "thin_cameras": len(c["thin_cams"])}
-
-    print("\nHylätyt:")
-    for r, n in reasons.most_common():
-        print(f"  {n:>6}  {r}")
-    if dist:
-        d = sorted(dist.values())
-        q = lambda p: d[min(len(d) - 1, int(p * len(d)))]
-        print(f"\nKamera ↔ lähin asema: mediaani {q(.5):.1f} km, 75 % alle {q(.75):.1f} km, "
-              f"90 % alle {q(.9):.1f} km, pisin {d[-1]:.1f} km")
-
-    (OUT / "counts.json").write_text(json.dumps(
-        {"runs": len(tars), "kinds": dict(kinds), "classes": summary, "rejected": dict(reasons),
-         "camera_station_km": {"median": q(.5), "p90": q(.9)} if dist else None},
-        ensure_ascii=False, indent=1))
+    r = count(summaries_hf() if args.hf else summaries_local())
+    show(r, args.md)
+    OUT.mkdir(exist_ok=True)
+    (OUT / "counts.json").write_text(json.dumps(r, ensure_ascii=False, indent=1))
 
 
 if __name__ == "__main__":

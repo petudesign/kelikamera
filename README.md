@@ -13,7 +13,9 @@ Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md). Sovitut ominaisuud
 ```
 collector/collect.py   keräin: hakee puuttuvat keruuhetket Digitrafficin historiasta, yksi hetki = yksi tar
 collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä sääasemasta
-collector/count.py     luokkalaskuri: montako esimerkkiä kustakin kelistä on kertynyt
+collector/count.py     luokkalaskuri tunnisteyhteenvedoista (--hf: vain .labels.json, ei kuvia)
+collector/summary.py   tunnisteyhteenveto keruutiedostosta (<hetki>.labels.json)
+collector/backfill_labels.py  puuttuvat yhteenvedot vanhoille ajoille (Actions: Opetusdatan valmius)
 collector/build_site.py karttasivun data → site/data/ (nykytila, 24 h historia, liikennesäävaroitukset)
 site/                  karttasivu (staattinen, MapLibre, suomi/englanti): index.html + app.js
 tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)

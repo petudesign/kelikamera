@@ -911,3 +911,22 @@ Syy: aikajana oli keskitetty koko näytön leveydelle (560 px), eikä se tiennyt
 
 **Jätettiin:** aikajanan siirto korttien sisään (vie tilaa kortin listoilta) ja kapeneminen alle ~450 px:n
 (pylväät ja kellonajat eivät enää mahdu luettavasti).
+
+## 2026-11-17 · Tunnisteyhteenveto jokaisesta keruuhetkestä
+
+**Ongelma:** opetusdatan valmiutta (30 eri kameraa per luokka) ei voinut tarkistaa lataamatta koko datasettiä
+(~3 Gt ja kasvaa ~0,5 Gt/pv), koska tunnisteet laskettiin kuvia sisältävistä tar-tiedostoista.
+
+**Päätös:**
+- Jokaisen `<hetki>.tar`:n rinnalle tallennetaan `<hetki>.labels.json` (muutama kt): per kuva kamera, asema ja
+  etäisyys, kuvan ottoaika, luokka tai hylkäyssyy, ohut kerros -merkintä, kitka, jään ja lumen määrä, tien lämpötila
+  ja yökuva (IR). Logiikka `collector/summary.py`; keräin kirjoittaa ja lataa sen samassa commitissa kuin kuvat.
+- **Luokkalaskuri** (`count.py`) laskee pelkistä yhteenvedoista. `--hf` lataa Hugging Facesta vain
+  `*.labels.json`-tiedostot. Käyttökelpoinen esimerkki = tienpintakulma, luokka tiedossa, ei ohut kerros ja asema
+  enintään 5 km päässä (sama raja kuin kartalla; aiemmin laskuri ei soveltanut sitä, mikä olisi yliarvioinut valmiutta).
+- **Uusi työnkulku "Opetusdatan valmius"** (päivittäin + käsin): tekee puuttuvat yhteenvedot vanhoille ajoille
+  (`backfill_labels.py`, tar kerrallaan, 50 tiedoston commitit) ja näyttää luokkien kertymän taulukkona ajon
+  yhteenvedossa.
+
+**Jätettiin:** yhteenvedon lisääminen tar-tiedoston sisään (vaatisi silti tar-latauksen) ja tilanteen julkaiseminen
+karttasivulle (sisäinen tieto; voidaan lisätä case-sivun lukuihin myöhemmin).

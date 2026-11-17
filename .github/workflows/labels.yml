@@ -1,0 +1,40 @@
+name: Opetusdatan valmius
+
+# Kerran päivässä: tekee puuttuvat tunnisteyhteenvedot (vanhat ajot ja mahdolliset aukot) ja näyttää
+# luokkien kertymän ajon yhteenvedossa (Actions → Opetusdatan valmius → ajo). Ei lataa kuvia muuten
+# kuin puuttuvien yhteenvetojen laskemiseen. DECISIONS.md 2026-11-17.
+on:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labels
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Puuttuvat tunnisteyhteenvedot
+        run: python collector/backfill_labels.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ vars.HF_REPO }}
+
+      - name: Luokkien kertymä
+        run: python collector/count.py --hf --md | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ vars.HF_REPO }}
