@@ -21,7 +21,8 @@ CHROME = os.environ.get("CHROME") or next(
 # Sivun JS-virheet talteen, jotta rikkinäinen sivu ei mene läpi huomaamatta.
 CAPTURE_ERRORS = ("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));"
                   "addEventListener('unhandledrejection',e=>__errors.push(String(e.reason)));")
-MAP_READY = ("typeof map!=='undefined'&&map.loaded()&&map.areTilesLoaded()"
+# Ennen skriptejä nimi map viittaa id="map"-elementtiin, joten tarkistetaan että se on jo kartta.
+MAP_READY = ("typeof map!=='undefined'&&typeof map.loaded==='function'&&map.loaded()&&map.areTilesLoaded()"
              "&&!!map.getLayer('cams')&&!map.isMoving()")
 
 
