@@ -72,10 +72,10 @@ function worsening(){
   const out=[];
   for(const c of DATA.cameras){
     if(!c.h) continue;
-    const h=c.h, f=c.hf||[], cur=h[24];
+    const f=c.hf||[], cur=histAt(c,24), worse=(a,b)=>ORDER.indexOf(a)<ORDER.indexOf(b);
     let since=null, reason=null;
-    if(cur>=3){
-      for(let i=23;i>=18;i--){ if(h[i]>=0 && h[i]<cur){ since=24-(i+1); reason={from:h[i],to:cur}; break; } }
+    if(SLIPPERY.includes(cur)){
+      for(let i=23;i>=18;i--){ const k=histAt(c,i); if(k!=="ei mittausta" && worse(cur,k)){ since=24-(i+1); reason={from:k,to:cur}; break; } }
     }
     if(!reason && f[24]!=null && f[24]<0.5){
       const prev=f.slice(18,24).filter(x=>x!=null), mx=prev.length?Math.max(...prev):null;
@@ -83,7 +83,7 @@ function worsening(){
     }
     if(reason) out.push({c,since,reason});
   }
-  return out.sort((a,b)=>(b.reason.to-a.reason.to)||(a.since-b.since));
+  return out.sort((a,b)=>(ORDER.indexOf(a.reason.to)-ORDER.indexOf(b.reason.to))||(a.since-b.since));
 }
 // rajaus: koko maa, kartan näkyvä alue tai valittu reitti (persoona-arvio: lista koski koko maata)
 let worseScope="all";
@@ -97,9 +97,9 @@ function renderWorse(all){
       `<button type="button" data-s="${k}" aria-pressed="${worseScope===k}">${n}</button>`).join("")}</div>
       ${worseScope!=="all"?`<span class="num">${list.length}/${all.length}</span>`:""}</div>
     <p class="blank" style="padding-bottom:8px;padding-top:8px">${L.worseIntro}</p>`+
-   (list.length?`<ul class="list">${list.map(({c,since,reason})=>{const to=KEYS[reason.to]||"ei mittausta";
+   (list.length?`<ul class="list">${list.map(({c,since,reason})=>{const to=reason.to;
      const what=reason.drop?L.frictionDrop(num(reason.drop[0],"",2),num(reason.drop[1],"",2))
-       :`${L.cls[KEYS[reason.from]]} → ${L.cls[to]}`;
+       :`${L.cls[reason.from]} → ${L.cls[to]}`;
      return `<li><button class="item" data-id="${c.id}"><span class="sw" style="background:${COLORS[to]}"></span>
        <span><b>${esc(nameOf(c))}</b><small>${esc(what)}</small></span><span class="ago">${L.ago(Math.max(0,since))}</span></button></li>`}).join("")}</ul>`
      :`<p class="blank">${worseScope==="all"?L.noWorse:L.noWorseHere}</p>`);

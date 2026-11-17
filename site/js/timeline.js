@@ -1,11 +1,11 @@
 // Aikajana: viimeiset 24 tuntia tunneittain, selaus ja toisto.
 
-// liukkaat kamerat tunneittain (jää/kuura + lumi/sohjo), aikajanan pylväät
+// liukkaat kamerat tunneittain (jää/kuura + lumi/sohjo, ei ohutta kerrosta), aikajanan pylväät
 let SLIP=null;
 function slipCounts(){
   if(SLIP) return SLIP;
   SLIP=DATA.times.map((_,i)=>{let ice=0,snow=0,any=0;
-    DATA.cameras.forEach(c=>{const x=c.h?c.h[i]:-1; if(x>=0)any++; if(x===4)ice++; else if(x===3)snow++;}); return {ice,snow,any}});
+    DATA.cameras.forEach(c=>{const k=histAt(c,i); if(k!=="ei mittausta")any++; if(k==="jää/kuura")ice++; else if(k==="luminen")snow++;}); return {ice,snow,any}});
   return SLIP;
 }
 function renderTimeline(){

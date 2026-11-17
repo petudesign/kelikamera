@@ -974,3 +974,17 @@ ole väliä. Vika toistettiin viivästämällä dataa, ja korjaus todettiin sama
 vasta kameradatan jälkeen, joten pohjakartta näkyi hetken kirkkaana. Nyt tummennus lisätään heti kartan latauduttua,
 ja kartta häivytetään näkyviin (0,3 s) vasta kun tummennuksen data on paikallaan (varalla 4 s aikaraja, ettei kartta jää
 piiloon, jos rajatiedosto ei lataudu). Hidastetulla verkolla mitattuna kirkkaus ei enää käy lopullista korkeammalla.
+
+**Ohut kerros kartalla omana luokkanaan (17.11.):** kartta näytti anturin luokan sellaisenaan, joten 0,06 mm:n
+kerros hyvällä pidolla ja 0,15 mm:n kerros kitkalla 0,34 olivat molemmat "Luminen / sohjo". Nyt kartalla on
+näyttöluokka "Ohut kerros, pito hyvä" (hopeanharmaa), joka käyttää samaa sääntöä kuin opetusdata (`labels.is_thin`:
+lumi tai jää, kitka ≥ 0,6, kerros < 0,1 mm). Ohut kerros ei ole liukas aikajanalla, reitillä eikä Liukastumassa-listassa.
+Historiaan (`th`, ohuen kerroksen tunnit) haetaan lumen ja jään määrä vain asemille, joilla jokin tunti voi olla ohut,
+jotta tunnin ajo ei kaksinkertaista rajapintakutsuja. Anturin alkuperäinen luokka säilyy datassa (`cls`).
+Hylätty: ohuen kerroksen näyttäminen märkänä (arvaisi anturin puolesta) ja rengasmerkki kartalla (olisi vaatinut
+oman tyylin kaikkiin listoihin; sama väri kaikkialla on johdonmukaisempi).
+
+**Keruun ajastus neljästi tunnissa (17.11.):** tunnin ajastuksesta GitHub ajoi käytännössä vain 4–10 tunnin välein,
+joten kartta oli tunteja vanha. Ajastus on nyt minuuteilla 7, 22, 37 ja 52. Data ei ollut vaarassa (historiasta
+täydennys), ja jono (`concurrency`) estää päällekkäiset ajot; ylimääräinen ajo ei hae mitään, jos keruuhetket ovat jo
+tallessa. Hylätty toistaiseksi: ulkoinen ajastin (vaatisi tunnuksen ulkoiseen palveluun).

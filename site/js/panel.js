@@ -50,7 +50,7 @@ function camReadings(c,s){
   const L=T(), fr=s.past?(c.hf?c.hf[slot]:null):c.friction;
   if(s.k==="ei mittausta"&&!s.hourGap)
     return c.cls?"":`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`;
-  const thin=["jää/kuura","luminen"].includes(s.k)&&fr!=null&&fr>=0.6&&!s.past&&(c.ice||c.snow);
+  const thin=s.k==="ohut"&&!s.past;
   const row=(icon,label,val)=>`<div class="kv"><dt>${ic(icon)}${label}</dt><dd class="num">${val}</dd></div>`;
   return `<dl class="read">
     <div class="kv joined"><dt>${ic("gauge")}${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
@@ -62,9 +62,9 @@ function camReadings(c,s){
 
 function camHistory(c){
   if(!c.h) return "";
-  const L=T(), name=x=>x>=0?KEYS[x]:"ei mittausta";
+  const L=T();
   return `<div class="hist"><h3>${L.last24}</h3>
-    <div class="strip">${c.h.map((x,i)=>`<i class="${i===slot?"sel":""}" title="${fmtClock(DATA.times[i])}: ${L.cls[name(x)]}" style="background:${COLORS[name(x)]}"></i>`).join("")}</div>
+    <div class="strip">${c.h.map((_,i)=>{const k=histAt(c,i);return `<i class="${i===slot?"sel":""}" title="${fmtClock(DATA.times[i])}: ${L.cls[k]}" style="background:${COLORS[k]}"></i>`}).join("")}</div>
     <div class="strip-t"><span>${fmtClock(DATA.times[0])}</span><span>${L.now}</span></div></div>`;
 }
 

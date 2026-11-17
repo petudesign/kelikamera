@@ -2,8 +2,10 @@
 
 const css=getComputedStyle(document.documentElement), v=n=>css.getPropertyValue(n).trim();
 const KEYS=["kuiva","kostea","märkä","luminen","jää/kuura"];
-const COLORS={"kuiva":v("--kuiva"),"kostea":v("--kostea"),"märkä":v("--marka"),"luminen":v("--luminen"),"jää/kuura":v("--jaa"),"ei mittausta":v("--none")};
-const ORDER=["jää/kuura","luminen","märkä","kostea","kuiva","ei mittausta"];
+// "ohut": anturin mukaan lunta tai jäätä, mutta pito hyvä ja kerros alle 0,1 mm (sama sääntö kuin opetusdatassa)
+const COLORS={"kuiva":v("--kuiva"),"kostea":v("--kostea"),"märkä":v("--marka"),"ohut":v("--ohut"),"luminen":v("--luminen"),"jää/kuura":v("--jaa"),"ei mittausta":v("--none")};
+const ORDER=["jää/kuura","luminen","ohut","märkä","kostea","kuiva","ei mittausta"];
+const SLIPPERY=["jää/kuura","luminen"];
 const hidden=new Set();
 let warnOpen=false;
 let ROUTE={ids:new Set(),cams:[],geom:null,km:0,h:0,from:null,to:null}, routeOn=false;
@@ -24,8 +26,13 @@ const PAUSE='<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
 
 // keli kameralle valitulla hetkellä
 function clsAt(c,i=slot){
-  if(i===24 || !c.h) return i===24 ? (c.cls||"ei mittausta") : "ei mittausta";
-  const x=c.h[i]; return x>=0?KEYS[x]:"ei mittausta";
+  if(i===24) return c.thin?"ohut":c.cls||"ei mittausta";
+  return histAt(c,i);
+}
+// keli tunnin i historiasta (i=24 on viimeisin tunti, ei välttämättä sama kuin nykyhetken mittaus)
+function histAt(c,i){
+  const x=c.h?c.h[i]:-1;
+  return x<0?"ei mittausta":c.th&&c.th.includes(i)?"ohut":KEYS[x];
 }
 
 const isMobile=()=>innerWidth<=720;

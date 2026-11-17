@@ -96,8 +96,8 @@ function renderRoute(){
       document.getElementById("from").value=last.from.name; document.getElementById("to").value=last.to.name; maybeRoute();};
     return; }
   const cams=ROUTE.cams, meas=cams.filter(x=>clsAt(x.c)!=="ei mittausta");
-  const n=Object.fromEntries(KEYS.map(k=>[k,0])); meas.forEach(x=>n[clsAt(x.c)]++);
-  const slip=meas.filter(x=>["luminen","jää/kuura"].includes(clsAt(x.c)));
+  const n=Object.fromEntries(ORDER.map(k=>[k,0])); meas.forEach(x=>n[clsAt(x.c)]++);
+  const slip=meas.filter(x=>SLIPPERY.includes(clsAt(x.c)));
   const worstK=meas.map(x=>clsAt(x.c)).sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b))[0];
   const slipTxt=["jää/kuura","luminen"].filter(k=>n[k]).map(k=>L.slipPart[k](n[k])).join(", ");
   const wet=n["märkä"]+n["kostea"];
@@ -111,7 +111,7 @@ function renderRoute(){
   el.innerHTML=`<div class="rsum">
       <div class="trip"><span>${esc(ROUTE.from.name)} → ${esc(ROUTE.to.name)}</span><button class="btn ghost editroute" id="editroute" type="button">${L.editRoute}</button></div>
       <div class="meta num">${kmf(ROUTE.km)} km · ${L.hm(h,m)}</div>
-      <div class="mix" aria-hidden="true">${KEYS.map(k=>`<i style="width:${meas.length?n[k]/meas.length*100:0}%;background:${COLORS[k]}"></i>`).join("")}</div>
+      <div class="mix" aria-hidden="true">${ORDER.slice(0,-1).reverse().map(k=>`<i style="width:${meas.length?n[k]/meas.length*100:0}%;background:${COLORS[k]}"></i>`).join("")}</div>
       <div class="meta">${L.onRoute(cams.length,meas.length)}</div>
       <ul>
         ${slip.length?`<li class="alert" style="--c:${COLORS[worstK]}"><span class="dot"></span><span>${L.slipN(slipTxt,kmf(slip[0].at),esc(nameOf(slip[0].c)))}</span></li>`

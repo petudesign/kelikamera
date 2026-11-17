@@ -26,7 +26,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).parent))
 from digitraffic import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
 from summary import km  # noqa: E402
-from labels import CLASS_OF_CODE, CLASSES, label, station_index  # noqa: E402
+from labels import CLASS_OF_CODE, CLASSES, is_thin, label, station_index  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "out"
@@ -36,6 +36,8 @@ HOURS = 24
 SENSOR_MAX_AGE = timedelta(minutes=90)  # vanhempi anturilukema ei kerro nykytilasta
 SENSOR_CLASS = "OPTISEN_ANTURIN_KELI1"
 SENSOR_FRICTION = "KITKA1_LUKU"
+SENSOR_SNOW = "LUMEN_MÄÄRÄ1"
+SENSOR_ICE = "JÄÄN_MÄÄRÄ1"
 CAP_FEED = "https://alerts.fmi.fi/cap/feed/atom_fi-FI.xml"  # sisältää kaikki kielet
 NS = {"a": "http://www.w3.org/2005/Atom", "c": "urn:oasis:names:tc:emergency:cap:1.2"}
 
@@ -53,11 +55,11 @@ def sensor_ids() -> dict[str, int]:
     return {s["name"]: s["id"] for s in get_json("/api/weather/v2/sensors")["sensors"]}
 
 
-def station_history(station: int, ids: dict[str, int], slots: list[datetime]) -> dict:
-    """Tunneittainen sarja: kunkin tunnin viimeisin arvo (enintään 1 h vanha)."""
+def station_history(station: int, ids: dict[str, int], slots: list[datetime], sensors: dict[str, str]) -> dict:
+    """Tunneittainen sarja anturia kohden: kunkin tunnin viimeisin arvo (enintään 1 h vanha)."""
     frm, to = slots[0] - timedelta(hours=1), slots[-1]
     out = {}
-    for key, name in (("c", SENSOR_CLASS), ("f", SENSOR_FRICTION)):
+    for key, name in sensors.items():
         try:
             d = get_json(f"/api/weather/v2/stations/{station}/data/history?sensorId={ids[name]}"
                          f"&from={frm:%Y-%m-%dT%H:%M:%SZ}&to={to:%Y-%m-%dT%H:%M:%SZ}")
@@ -186,6 +188,7 @@ def main() -> None:
             "water": r2(lab.get("water_mm")) if near else None,
             "snow": r2(lab.get("snow_mm")) if near else None,
             "ice": r2(lab.get("ice_mm")) if near else None,
+            "thin": bool(near and lab.get("thin")),
             "roadT": r2(lab.get("road_temp")) if near else None,
             "airT": r2(lab.get("air_temp")) if near else None,
         })
@@ -193,13 +196,23 @@ def main() -> None:
     print(f"Historia {len(need)} asemalle…")
     ids = sensor_ids()
     with ThreadPoolExecutor(8) as ex:
-        hist = dict(zip(need, ex.map(lambda s: station_history(s, ids, slots), need)))
+        hist = dict(zip(need, ex.map(
+            lambda s: station_history(s, ids, slots, {"c": SENSOR_CLASS, "f": SENSOR_FRICTION}), need)))
+        classes = {st: [CLASS_OF_CODE.get(int(v)) if v is not None else None for v in h["c"]] for st, h in hist.items()}
+        # Kerroksen paksuus haetaan vain asemille, joilla jokin tunti voi olla ohut kerros (lumi tai jää, pito hyvä)
+        maybe_thin = [st for st, h in hist.items()
+                      if any(is_thin(k, f, None, None) for k, f in zip(classes[st], h["f"]))]
+        for st, layers in zip(maybe_thin, ex.map(
+                lambda s: station_history(s, ids, slots, {"s": SENSOR_SNOW, "i": SENSOR_ICE}), maybe_thin)):
+            hist[st] |= layers
     for c in cams:
         h = hist.get(c["st"]) if c["cls"] else None
         if h:
-            c["h"] = [CLASSES.index(CLASS_OF_CODE[int(v)]) if v is not None and int(v) in CLASS_OF_CODE else -1
-                      for v in h["c"]]
+            ks = classes[c["st"]]
+            c["h"] = [CLASSES.index(k) if k else -1 for k in ks]
             c["hf"] = [r2(v) for v in h["f"]]
+            c["th"] = [i for i, (k, f) in enumerate(zip(ks, h["f"]))
+                       if "s" in h and is_thin(k, f, h["i"][i], h["s"][i])]
 
     counts = {k: 0 for k in CLASSES} | {"ei mittausta": 0}
     for c in cams:

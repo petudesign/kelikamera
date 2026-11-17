@@ -62,3 +62,13 @@ komponenttijärjestelmä paneeleille. Luvut eivät muuttuneet (malli ei vielä k
 | ![](docs/progress/2026-11-11/ui-v3-ennen-desktop.png) | ![](docs/progress/2026-11-11/ui-v4-desktop.png) |
 
 <img src="docs/progress/2026-11-11/ui-v3-ennen-mobiili.png" width="260" alt="Mobiili ennen"> <img src="docs/progress/2026-11-11/ui-v4-mobiili.png" width="260" alt="Mobiili jälkeen">
+
+### 2026-11-17 · Ohut kerros omaksi luokakseen kartalla
+
+Huomio kartalta: Ilmajoki ja Veteli olivat molemmat "Luminen / sohjo", vaikka Ilmajoen kuvassa tie oli lähes paljas
+(kitka 0,69, kerros 0,06 mm) ja Vetelissä selvästi luminen (0,34, 0,15 mm). Opetusdata erotti nämä jo
+(ohut kerros merkitään erikseen), mutta kartta ei. Nyt sama sääntö näkyy kartalla omana luokkanaan "Ohut kerros,
+pito hyvä", eikä ohutta kerrosta lasketa liukkaaksi aikajanalla, reitillä eikä Liukastumassa-listassa.
+Tilanne 17.11. klo 22: 4 kameraa ohut kerros, 14 luminen, 6 jää; vuorokauden aikana 62 kameralla ohuen kerroksen tunteja.
+
+![Ohut kerros kartalla ja paneelissa](docs/progress/2026-11-17/ohut-kerros.jpg)

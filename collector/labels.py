@@ -45,6 +45,12 @@ THIN_MIN_FRICTION = 0.6
 THIN_MAX_LAYER_MM = 0.1
 
 
+def is_thin(cls: str | None, friction: float | None, ice_mm: float | None, snow_mm: float | None) -> bool:
+    layer = max(ice_mm or 0, snow_mm or 0)
+    return (cls in ("luminen", "jää/kuura") and friction is not None
+            and friction >= THIN_MIN_FRICTION and layer < THIN_MAX_LAYER_MM)
+
+
 def _t(s: str | None) -> datetime | None:
     return datetime.fromisoformat(s.replace("Z", "+00:00")) if s else None
 
@@ -101,7 +107,5 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
         out["reason"] = f"koodi {code} ({OPTICAL_CODES.get(code, 'tuntematon')})"
         return out
     out["class"] = cls
-    layer = max(out.get("ice_mm") or 0, out.get("snow_mm") or 0)
-    out["thin"] = (cls in ("luminen", "jää/kuura") and out.get("friction") is not None
-                   and out["friction"] >= THIN_MIN_FRICTION and layer < THIN_MAX_LAYER_MM)
+    out["thin"] = is_thin(cls, out["friction"], out["ice_mm"], out["snow_mm"])
     return out
