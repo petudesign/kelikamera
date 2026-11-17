@@ -24,7 +24,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
-from collect import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
+from digitraffic import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
 from summary import km  # noqa: E402
 from labels import CLASS_OF_CODE, CLASSES, label, station_index  # noqa: E402
 
@@ -234,20 +234,20 @@ def main() -> None:
 
 
 def stamp_assets() -> None:
-    """Versiotunniste skriptin osoitteeseen (app.js?v=<sisällön tiiviste>).
-
-    GitHub Pages antaa tiedostoille 10 min välimuistiajan: uusi index.html ja välimuistin vanha app.js
-    sopivat yhteen huonosti (13.11. tietosuojarivi jäi tyhjäksi). Tiiviste vaihtuu vain, kun app.js muuttuu.
-    """
+    """Skriptien osoitteisiin sisällön tiiviste (js/x.js?v=…). GitHub Pagesin 10 min välimuisti antoi
+    muuten uuden sivun kanssa vanhan skriptin (DECISIONS.md 2026-11-13)."""
     import hashlib
     import re
     site = ROOT / "site"
-    v = hashlib.sha1((site / "app.js").read_bytes()).hexdigest()[:10]
     html = (site / "index.html").read_text()
-    new = re.sub(r'src="app\.js(\?v=[0-9a-f]+)?"', f'src="app.js?v={v}"', html)
+
+    def stamp(m: re.Match) -> str:
+        v = hashlib.sha1((site / m.group(1)).read_bytes()).hexdigest()[:10]
+        return f'src="{m.group(1)}?v={v}"'
+
+    new = re.sub(r'src="(js/[\w-]+\.js)(?:\?v=[0-9a-f]+)?"', stamp, html)
     if new != html:
         (site / "index.html").write_text(new)
-    print(f"  app.js?v={v}")
 
 
 if __name__ == "__main__":

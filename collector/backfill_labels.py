@@ -16,7 +16,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from summary import station_coords, write_summary  # noqa: E402
+from digitraffic import station_coords  # noqa: E402
+from summary import write_summary  # noqa: E402
 
 BATCH = 50
 

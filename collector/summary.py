@@ -18,6 +18,7 @@ from pathlib import Path
 from PIL import Image, ImageStat
 
 sys.path.insert(0, str(Path(__file__).parent))
+from digitraffic import station_coords  # noqa: E402
 from labels import label, station_index  # noqa: E402
 
 SUMMARY_VERSION = 1
@@ -74,13 +75,6 @@ def write_summary(tar_path: Path, coords: dict) -> Path:
     out = tar_path.with_name(tar_path.stem + ".labels.json")
     out.write_text(json.dumps(summarize(tar_path, coords), ensure_ascii=False, separators=(",", ":")))
     return out
-
-
-def station_coords() -> dict[int, tuple[float, float]]:
-    """{asema_id: (lon, lat)} – sama välimuisti kuin keräimellä (v2-rajapinta).
-    Tuonti funktion sisällä, koska collect tuo tämän moduulin (ei kehäviittausta latausvaiheessa)."""
-    from collect import weather_stations
-    return {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
 
 
 if __name__ == "__main__":

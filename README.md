@@ -11,29 +11,46 @@ Edistyminen mittareina ja kuvina: [PROGRESS.md](PROGRESS.md). Sovitut ominaisuud
 ## Rakenne
 
 ```
-collector/collect.py   keräin: hakee puuttuvat keruuhetket Digitrafficin historiasta, yksi hetki = yksi tar
-collector/labels.py    tunnisteet: kuva → keliluokka ja kitka lähimmästä sääasemasta
-collector/count.py     luokkalaskuri tunnisteyhteenvedoista (--hf: vain .labels.json, ei kuvia)
-collector/summary.py   tunnisteyhteenveto keruutiedostosta (<hetki>.labels.json)
-collector/backfill_labels.py  puuttuvat yhteenvedot vanhoille ajoille (Actions: Opetusdatan valmius)
-collector/build_site.py karttasivun data → site/data/ (nykytila, 24 h historia, liikennesäävaroitukset)
-site/                  karttasivu (staattinen, MapLibre, suomi/englanti): index.html + app.js
-tools/screenshot.py    edistymiskuvat karttasivusta (Chrome ilman ikkunaa)
-tools/break_ui.py      hajota UI: sivu pahimman tapauksen datalla (pitkät nimet, tyhjä, kaikki jäässä, rikki)
-tools/external_hosts.py mihin ulkoisiin palvelimiin sivu ottaa yhteyttä (kenelle kävijän IP menee); exit 1, jos sallimaton
-tools/overlap_check.py jääkö aikajana korttien alle leveyksillä 800–1920 px; exit 1, jos päällekkäin
-collector/peek.py      tarkistussivu yhden ajon kuvista ja anturiarvoista → out/peek/index.html
-.github/workflows/     ajastus GitHub Actionsissa (tunnin välein; puuttuvat hetket haetaan jälkikäteen)
+collector/                     keruu ja tunnisteet (Python)
+  collect.py                   keräin: puuttuvat keruuhetket Digitrafficin historiasta, yksi hetki = yksi tar
+  digitraffic.py               Digitrafficin rajapinnat: kamerat, kuvat, asemat ja niiden 24 h historia
+  forecasts.py                 sääennusteet arkistoon (Digitraffic, Ilmatieteen laitos)
+  slots.py                     keruuhetket ja aikasarjojen haku (puhtaat funktiot)
+  storage.py                   tallennus: out/ ja Hugging Face
+  labels.py                    tunniste: kuva → keliluokka ja kitka lähimmästä tiesääasemasta
+  summary.py                   tunnisteyhteenveto keruutiedostosta (<hetki>.labels.json)
+  count.py                     opetusdatan valmius tunnisteyhteenvedoista (--hf: ei kuvia)
+  backfill_labels.py           puuttuvat yhteenvedot vanhoille ajoille
+  build_site.py                karttasivun data → site/data/
+  peek.py                      tarkistussivu yhden keruutiedoston kuvista ja anturiarvoista
+site/                          karttasivu (staattinen, ei kehystä, suomi/englanti)
+  index.html                   rakenne ja tyylit
+  js/                          i18n, core, map, sidebar, route, timeline, camera-image, panel, main
+  vendor/                      Geist-fontti ja MapLibre omasta reposta (ei kolmansia osapuolia)
+tests/                         yksikkötestit (pytest)
+tools/                         selaintarkistukset ja kuvat (Chrome ilman ikkunaa, tools/chrome.py)
+  serve.py                     esikatselu pakattuna kuten GitHub Pages (suorituskykymittauksiin)
+  smoke_test.py                päätoiminnot: kamera, aikajana, kieli, varoitukset, haku, JS-virheet
+  overlap_check.py             aikajana ei korttien alla leveyksillä 800–1920 px
+  external_hosts.py            vain sallitut ulkoiset palvelimet (kenelle kävijän IP menee)
+  screenshot.py                kuvakaappaukset (työpöytä, puhelin, kapea puhelin)
+  break_ui.py                  sivu pahimman tapauksen datalla
+.github/workflows/
+  collect.yml                  keruu ja julkaisu tunnin välein, aukkojen valvonta
+  labels.yml                   opetusdatan valmius päivittäin
+  ci.yml                       testit ja selaintarkistukset jokaisessa pushissa
 ```
 
 ## Paikallinen ajo
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python collector/collect.py --dry-run      # mitä haettaisiin
-.venv/bin/python collector/collect.py --limit 30   # pikatesti
-.venv/bin/python collector/collect.py              # kaikki puuttuvat hetket (~40 Mt per ruudukkohetki)
-.venv/bin/python collector/peek.py
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/python -m pytest -q tests                  # yksikkötestit
+.venv/bin/python collector/collect.py --dry-run      # mitä keräin hakisi
+.venv/bin/python collector/collect.py --limit 30     # pikatesti
+.venv/bin/python collector/build_site.py             # sivun data
+.venv/bin/python tools/serve.py &                    # esikatselu http://localhost:8765/, sitten esim.
+.venv/bin/python tools/smoke_test.py
 ```
 
 Ilman `HF_TOKEN`- ja `HF_REPO`-ympäristömuuttujia tiedostot jäävät vain `out/`-kansioon.

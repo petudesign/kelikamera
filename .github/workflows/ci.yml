@@ -1,0 +1,37 @@
+name: Testit
+
+# Jokaisessa pushissa: yksikkötestit, sitten sivu rakennetaan oikealla datalla ja tarkistetaan selaimessa
+# (päätoiminnot, aikajana ei korttien alla, vain sallitut ulkoiset palvelimet).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Yksikkötestit
+        run: python -m pytest -q tests
+
+      - name: Rakenna sivun data
+        run: python collector/build_site.py
+
+      - name: Selaintarkistukset
+        run: |
+          (cd site && python -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 2
+          python tools/smoke_test.py
+          python tools/overlap_check.py
+          python tools/external_hosts.py

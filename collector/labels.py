@@ -37,12 +37,12 @@ CLASS_OF_CODE = {
 }
 CLASSES = ["kuiva", "kostea", "märkä", "luminen", "jää/kuura"]
 
-MAX_SENSOR_GAP_MIN = 30  # vanha muoto: anturimittaus (ajohetkeltä) enintään näin kaukana kuvan ajasta
-MAX_SENSOR_GAP_MIN_V2 = 10
-# Ohut kerros (DECISIONS.md 2026-11-11): anturi sanoo lumi/jää, mutta kitka on hyvä ja kerros ohut.
-# Luokka säilyy, mutta 'thin' = True, ja ensimmäinen malli jättää nämä luokkakoulutuksen ulkopuolelle.
+MAX_SENSOR_GAP_MIN = 30     # format 1: anturilukema ajohetkeltä, kuva voi olla vanhempi
+MAX_SENSOR_GAP_MIN_V2 = 10  # format 2: anturiarvo historiasta kuvan ottohetkeltä
+# Ohut kerros (DECISIONS.md 2026-11-11): luokka lumi tai jää, mutta kitka hyvä ja kerros ohut.
+# Luokka säilyy, mutta ensimmäinen malli jättää nämä luokkakoulutuksen ulkopuolelle.
 THIN_MIN_FRICTION = 0.6
-THIN_MAX_LAYER_MM = 0.1  # format 2: anturiarvo haettu historiasta kuvan ottohetkeltä
+THIN_MAX_LAYER_MM = 0.1
 
 
 def _t(s: str | None) -> datetime | None:

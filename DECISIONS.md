@@ -930,3 +930,31 @@ Syy: aikajana oli keskitetty koko näytön leveydelle (560 px), eikä se tiennyt
 
 **Jätettiin:** yhteenvedon lisääminen tar-tiedoston sisään (vaatisi silti tar-latauksen) ja tilanteen julkaiseminen
 karttasivulle (sisäinen tieto; voidaan lisätä case-sivun lukuihin myöhemmin).
+
+## 2026-11-17 · Siivouskierros: koodi näytettävään kuntoon
+
+**Lähtökohta:** nopeiden korjauskierrosten jälkeen `collect.py` (564 riviä) ja `site/app.js` (764 riviä) tekivät
+liikaa, testejä ei ollut, selaintyökaluissa oli sama Chromen käynnistys kolmesti, ja kommentteja oli kertynyt
+kertomaan *mitä* koodi tekee. Tavoite: koodi, jota kehtaa näyttää rekrytoijalle ja jota on helppo jatkaa.
+
+**Muutokset (toiminnallisuus ennallaan):**
+- **Keräin osiin:** `digitraffic.py` (rajapinnat), `forecasts.py` (ennusteet), `slots.py` (keruuhetket ja
+  aikasarjat, puhtaat funktiot), `storage.py` (out/ ja Hugging Face); `collect.py` jäi koordinoijaksi (~190 riviä).
+- **Yksikkötestit** (`tests/`, pytest, 16 testiä): keruuhetket ja menetetyt hetket, lähimmän arvon haku,
+  talviehto, tunnisteet ja ohut kerros, luokkalaskuri.
+- **Sivun skripti yhdeksään tiedostoon** (`site/js/`), tavallisina skripteinä ilman kehystä tai käännösvaihetta.
+  **Kamerapaneeli** piirretään kerran ja päivittää aikajanaa selatessa vain muuttuvat osat; kuvan vaihto on oma
+  osansa (`camera-image.js`). Aiemmat kiertotiet (kuvaelementin siirto uuteen paneeliin) poistuivat.
+- **Selaintyökaluille yhteinen pohja** (`tools/chrome.py`); uusi `smoke_test.py` (päätoiminnot ja JS-virheet) ja
+  `serve.py` (pakattu esikatselu, jotta suorituskyky mitataan kuten GitHub Pagesissa).
+- **CI** (`.github/workflows/ci.yml`): jokaisessa pushissa yksikkötestit, sivun rakennus oikealla datalla ja
+  selaintarkistukset (savutesti, päällekkäisyys, ulkoiset palvelimet). Ennen nämä olivat käsin ajettavia.
+- **Kommentit:** jäljelle vain perustelut, rajoitteet ja viittaukset päätöksiin.
+- Käyttämättömät CSS-säännöt tarkistettiin (luokkien vertailu merkintöihin ja skripteihin): ei löytynyt.
+
+**Tarkistus:** testit 16/16, savutesti, päällekkäisyys 0/16, ulkoiset palvelimet sallittuja, Lighthouse
+100/100/100/100 (mobiili ja työpöytä, pakattu esikatselu), keräin päästä päähän väliaikaiskansioon (22 keruuhetkeä
+ja yhteenvedot, manifestin rakenne ennallaan).
+
+**Jätettiin:** ES-moduulit ja käännösvaihe (työkalut ja kehittäjäkonsoli käyttävät globaaleja funktioita, eikä
+sivu hyödy niputuksesta); CSS:n siirto omaan tiedostoon (ensimmäinen piirto ilman lisäpyyntöä).

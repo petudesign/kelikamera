@@ -31,7 +31,8 @@ MAX_KM = 5.0        # sama raja kuin kartalla: kauempana olevan aseman mittaus e
 
 def summaries_local() -> list[dict]:
     """Paikalliset ajot: valmis .labels.json, tai lasketaan tar-tiedostosta (ja tallennetaan)."""
-    from summary import station_coords, write_summary
+    from digitraffic import station_coords
+    from summary import write_summary
     tars = sorted({p.name: p for p in OUT.glob("**/*.tar") if "hf" not in p.parts}.values())
     coords = None
     out = []

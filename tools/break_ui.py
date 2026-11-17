@@ -31,16 +31,16 @@ LONG_WARN_FI = ("Liikennesää: Huonon ajokelin todennäköisyys on 60 % torstai
 LONG_HEAD = "Oranssi liikennesää: Maan etelä-, keski- ja pohjoisosa sekä Ahvenanmaa ja saaristo, to 0.00 – pe 23.59"
 
 
-def write(name: str, data: dict, warnings: dict, mutate_html=None) -> None:
+def write(name: str, data: dict, warnings: dict, mutate_js=None) -> None:
     d = OUT / name
     if d.exists():
         shutil.rmtree(d)
     shutil.copytree(SITE, d)
     (d / "data" / "latest.json").write_text(json.dumps(data, ensure_ascii=False))
     (d / "data" / "warnings.json").write_text(json.dumps(warnings, ensure_ascii=False))
-    if mutate_html:  # muokkaa sivun skriptiä (app.js)
-        p = d / "app.js"
-        p.write_text(mutate_html(p.read_text()))
+    if mutate_js:  # kamerakuvan rajapinta rikki
+        p = d / "js" / "camera-image.js"
+        p.write_text(mutate_js(p.read_text()))
     print(f"  {name}: {d.relative_to(ROOT)}")
 
 
