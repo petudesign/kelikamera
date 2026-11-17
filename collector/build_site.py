@@ -25,7 +25,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
 from collect import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
-from count import km  # noqa: E402
+from summary import km  # noqa: E402
 from labels import CLASS_OF_CODE, CLASSES, label, station_index  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
