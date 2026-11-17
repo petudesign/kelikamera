@@ -49,7 +49,8 @@ button,[role="tab"]{user-select:none;-webkit-user-select:none;-webkit-touch-call
 html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Geist",system-ui,sans-serif;font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased}
 button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-#map{position:fixed;inset:0}
+#map{position:fixed;inset:0;opacity:0;transition:opacity .3s}
+#map.shown{opacity:1}
 .num{font-variant-numeric:tabular-nums}
 /* värineliö: valkoisella lumella hiusviivareuna, jotta se erottuu vaalealla */
 /* värimerkki on ympyrä kuten kartan piste (neliö luettiin valkoisena valintaruutuna) */

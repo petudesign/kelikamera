@@ -17,7 +17,18 @@ function lockToFinland(){
 }
 // map.loaded() on false aina kun ruutuja latautuu, joten load-tapahtuma talteen lupauksena
 const mapReady=new Promise(r=>map.once("load",r));
-mapReady.then(lockToFinland);
+// Tummennus Suomen ulkopuolelle heti, ja kartta näkyviin vasta sen jälkeen (muuten pohjakartta välähtää)
+function addMask(){
+  map.addSource("fin",{type:"geojson",data:"data/finland.geojson"});
+  map.addLayer({id:"outside",type:"fill",source:"fin",filter:["==",["get","role"],"mask"],
+    paint:{"fill-color":"#0a0a0a","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
+  map.addLayer({id:"border",type:"line",source:"fin",filter:["==",["get","role"],"border"],
+    paint:{"line-color":"#9fb0c4","line-opacity":["interpolate",["linear"],["zoom"],5,.35,9,0],"line-width":1}});
+}
+function reveal(){document.getElementById("map").classList.add("shown")}
+map.on("sourcedata",function masked(e){if(e.sourceId==="fin"&&e.isSourceLoaded){map.off("sourcedata",masked);reveal()}});
+setTimeout(reveal,4000);
+mapReady.then(()=>{lockToFinland();addMask()});
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(lockToFinland,150)});
 
 function geojson(){
@@ -34,11 +45,6 @@ function warnGeo(){
     geometry:{type:"MultiPolygon",coordinates:w.polygons.map(r=>[r])},properties:{i,color:w.color}}))};
 }
 function addLayers(){
-  map.addSource("fin",{type:"geojson",data:"data/finland.geojson"});
-  map.addLayer({id:"outside",type:"fill",source:"fin",filter:["==",["get","role"],"mask"],
-    paint:{"fill-color":"#0a0a0a","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
-  map.addLayer({id:"border",type:"line",source:"fin",filter:["==",["get","role"],"border"],
-    paint:{"line-color":"#9fb0c4","line-opacity":["interpolate",["linear"],["zoom"],5,.35,9,0],"line-width":1}});
   map.addSource("warn",{type:"geojson",data:warnGeo()});
   map.addLayer({id:"warn-fill",type:"fill",source:"warn",filter:warnFilter(),paint:{"fill-color":v("--warn"),"fill-opacity":.08}});
   map.addLayer({id:"warn-line",type:"line",source:"warn",filter:warnFilter(),paint:{"line-color":v("--warn"),"line-width":1.2,"line-opacity":.7,"line-dasharray":[3,2]}});

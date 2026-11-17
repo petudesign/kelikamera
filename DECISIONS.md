@@ -969,3 +969,8 @@ README kertoo sen.
 latautuu. Jos data tuli kartan load-tapahtuman jälkeen ruutujen vielä latautuessa, kameratasoa jäätiin odottamaan
 tapahtumaa, joka ei enää tullut. Nyt load-tapahtuma otetaan talteen lupauksena (`mapReady`), joten järjestyksellä ei
 ole väliä. Vika toistettiin viivästämällä dataa, ja korjaus todettiin samalla testillä.
+
+**Taustan välähdys avattaessa (17.11.):** tummennus Suomen ulkopuolelle lisättiin samassa vaiheessa kuin kamerat eli
+vasta kameradatan jälkeen, joten pohjakartta näkyi hetken kirkkaana. Nyt tummennus lisätään heti kartan latauduttua,
+ja kartta häivytetään näkyviin (0,3 s) vasta kun tummennuksen data on paikallaan (varalla 4 s aikaraja, ettei kartta jää
+piiloon, jos rajatiedosto ei lataudu). Hidastetulla verkolla mitattuna kirkkaus ei enää käy lopullista korkeammalla.
