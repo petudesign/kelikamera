@@ -962,3 +962,5 @@ sivu hyödy niputuksesta); CSS:n siirto omaan tiedostoon (ensimmäinen piirto il
 **README (17.11.):** kirjoitettu uudelleen esittelyksi: kuvaus, kuvakaappaus, putki kaaviona, tilanne, rakenne ja
 kehityskomennot. Pois GitHub-käyttöönoton ohje (repo on jo käytössä, ja kuuluu tarvittaessa omaan dokumenttiinsa) ja
 tiedostokohtainen luettelo (moduulien docstringit kertovat saman ajan tasalla).
+README käännettiin englanniksi (julkinen repo, kansainväliset lukijat); muut dokumentit pysyvät suomeksi, ja
+README kertoo sen.

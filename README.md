@@ -1,71 +1,72 @@
 # Kelikamera AI
 
-[![Testit](https://github.com/petudesign/kelikamera/actions/workflows/ci.yml/badge.svg)](https://github.com/petudesign/kelikamera/actions/workflows/ci.yml)
-[![Keruu](https://github.com/petudesign/kelikamera/actions/workflows/collect.yml/badge.svg)](https://github.com/petudesign/kelikamera/actions/workflows/collect.yml)
+[![Tests](https://github.com/petudesign/kelikamera/actions/workflows/ci.yml/badge.svg)](https://github.com/petudesign/kelikamera/actions/workflows/ci.yml)
+[![Collection](https://github.com/petudesign/kelikamera/actions/workflows/collect.yml/badge.svg)](https://github.com/petudesign/kelikamera/actions/workflows/collect.yml)
 
-Tien pinnan tila ja kitka Fintrafficin kelikameroiden kuvista. Kuudelta kamerasta kymmenestä puuttuu lähellä oleva
-kelianturi; tavoite on paikallinen malli, joka arvioi kelin suoraan kuvasta.
+Road surface condition and friction from Fintraffic's road weather cameras. Six in ten cameras have no surface sensor
+nearby; the goal is a local model that estimates the condition straight from the image.
 
-**[Avaa kartta →](https://petudesign.github.io/kelikamera/)**
+**[Open the map →](https://petudesign.github.io/kelikamera/)**
 
-![Karttanäkymä: mitattu keli kameroittain, kamerapaneeli ja 24 tunnin aikajana](docs/kelikamera.png)
+![Map view: measured conditions per camera, the camera panel and the 24-hour timeline](docs/kelikamera.png)
 
-## Miten se toimii
+## How it works
 
 ```mermaid
 flowchart LR
-  A[Digitraffic<br>kuvat + anturit, 24 h historia] --> B[Keräin<br>tunnin välein]
-  F[Ilmatieteen laitos<br>ennusteet] --> B
-  B --> C[(Hugging Face<br>yksityinen datasetti)]
-  B --> D[Tunnisteet<br>lähimmästä optisesta kelianturista]
-  D --> E[Opetusdata]
-  A --> G[Karttasivu<br>GitHub Pages]
+  A[Digitraffic<br>images + sensors, 24 h history] --> B[Collector<br>hourly]
+  F[Finnish Meteorological Institute<br>forecasts] --> B
+  B --> C[(Hugging Face<br>private dataset)]
+  B --> D[Labels<br>from the nearest optical sensor]
+  D --> E[Training data]
+  A --> G[Map<br>GitHub Pages]
 ```
 
-- **Opetusdata ilman käsin merkitsemistä.** Jokainen kuva yhdistetään lähimmän tiesääaseman (≤ 5 km) optiseen
-  kelianturiin kuvan ottohetkellä (±10 min). Ohuet lumi- ja jääkerrokset hyvällä kitkalla merkitään erikseen.
-- **Keruu kellon mukaan, ei ajon.** Kiinteät keruuhetket kolmen tunnin välein haetaan Digitrafficin historiasta
-  jälkikäteen, joten pudonnut ajo ei hävitä dataa. Talvisilta kameroilta kuvat tunnin välein.
-- **Kartta toimii jo ennen mallia:** mitattu keli, 24 tunnin aikajana, liukastuvat tiet, tiekohtainen näkymä,
-  reittihaku ja viralliset liikennesäävaroitukset suomeksi ja englanniksi.
+- **Training data without hand-labelling.** Each image is paired with the optical surface sensor of the nearest road
+  weather station (≤ 5 km) at the moment the image was taken (±10 min). Thin snow and ice layers with good friction
+  are flagged separately.
+- **Collection by the clock, not by the run.** Fixed moments every three hours are filled in afterwards from
+  Digitraffic's history, so a dropped run loses no data. Cameras in winter conditions are collected hourly.
+- **The map is useful before the model exists:** measured conditions, a 24-hour timeline, roads getting slippery,
+  a view per road, route search and official traffic weather warnings, in Finnish and English.
 
-## Tilanne
+## Status
 
 | | |
 |---|---|
-| Kameroita | ~800, joista ~325 mitatulla kelillä |
-| Opetusdata | kaikissa viidessä luokassa yli 30 eri kameraa (jää 84, lumi 123) |
-| Seuraavaksi | tunnisteiden laadun varmistus, sitten mallin koulutus (DINOv2 + pieni pää) |
+| Cameras | ~800, of which ~325 have a measured condition |
+| Training data | over 30 distinct cameras in all five classes (ice 84, snow 123) |
+| Next | label quality checks, then training (DINOv2 + a small head) |
 
-Päätökset perusteluineen: [DECISIONS.md](DECISIONS.md) · edistyminen: [PROGRESS.md](PROGRESS.md) ·
-tiekartta: [ROADMAP.md](ROADMAP.md)
+Decisions and their reasons: [DECISIONS.md](DECISIONS.md) · progress: [PROGRESS.md](PROGRESS.md) ·
+roadmap: [ROADMAP.md](ROADMAP.md) (in Finnish)
 
-## Rakenne
+## Structure
 
 ```
-collector/   keruu, tunnisteet ja sivun data (Python)
-site/        karttasivu: HTML, CSS ja tavalliset skriptit ilman kehystä tai käännösvaihetta
-tests/       yksikkötestit (pytest)
-tools/       selaintarkistukset ja kuvakaappaukset (Chrome ilman ikkunaa)
+collector/   collection, labels and map data (Python)
+site/        the map: HTML, CSS and plain scripts, no framework or build step
+tests/       unit tests (pytest)
+tools/       browser checks and screenshots (headless Chrome)
 ```
 
-GitHub Actions ajaa keruun ja julkaisun tunnin välein, opetusdatan valmiusraportin päivittäin sekä testit ja
-selaintarkistukset (päätoiminnot, asettelu, ulkoiset palvelimet) jokaisessa pushissa.
+GitHub Actions runs collection and publishing hourly, a training-data readiness report daily, and the tests and
+browser checks (core features, layout, external servers) on every push.
 
-## Kehitys
+## Development
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 .venv/bin/python -m pytest -q tests
-.venv/bin/python collector/collect.py --dry-run     # mitä keräin hakisi
-.venv/bin/python collector/build_site.py            # sivun data
+.venv/bin/python collector/collect.py --dry-run     # what the collector would fetch
+.venv/bin/python collector/build_site.py            # map data
 .venv/bin/python tools/serve.py                     # http://localhost:8765/
 .venv/bin/python tools/smoke_test.py
 ```
 
-## Data ja lisenssit
+## Data and licences
 
-Kuvat ja anturidata: Fintraffic / [digitraffic.fi](https://www.digitraffic.fi/), CC BY 4.0.
-Ennusteet ja varoitukset: [Ilmatieteen laitos](https://www.ilmatieteenlaitos.fi/avoin-data), CC BY 4.0.
-Kartta: OpenFreeMap, © OpenMapTiles, © OpenStreetMap. Paikkahaku Photon (komoot), reititys OSRM (FOSSGIS).
-Fontti Geist (OFL 1.1), ikonit Lucide (ISC), kartta MapLibre GL JS (BSD-3).
+Images and sensor data: Fintraffic / [digitraffic.fi](https://www.digitraffic.fi/), CC BY 4.0.
+Forecasts and warnings: [Finnish Meteorological Institute](https://en.ilmatieteenlaitos.fi/open-data), CC BY 4.0.
+Map: OpenFreeMap, © OpenMapTiles, © OpenStreetMap. Place search Photon (komoot), routing OSRM (FOSSGIS).
+Font Geist (OFL 1.1), icons Lucide (ISC), map library MapLibre GL JS (BSD-3).
