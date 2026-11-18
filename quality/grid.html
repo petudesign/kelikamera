@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kelikamera · huonot kuvat</title>
+<style>
+@font-face{font-family:"Geist";font-weight:100 900;src:url(fonts/geist-latin-wght-normal.woff2) format("woff2")}
+:root{--bg:#0a0a0a;--surface:#151515;--line:#262626;--text:#fafafa;--text-2:#a3a3a3;--bad:#ff4766}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Geist",system-ui,sans-serif;padding:16px}
+header{position:sticky;top:0;z-index:1;background:var(--bg);padding:8px 0 12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+header b{font-weight:600}
+header span{color:var(--text-2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+button{position:relative;padding:0;border:2px solid transparent;border-radius:8px;background:var(--surface);cursor:pointer;overflow:hidden}
+button img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+button small{position:absolute;left:6px;top:4px;color:var(--text);font:12px "Geist",system-ui,sans-serif;text-shadow:0 1px 2px #000}
+button.bad{border-color:var(--bad)}
+button.bad img{opacity:.55}
+button.bad::after{content:"huono";position:absolute;right:6px;top:4px;padding:0 5px;border-radius:3px;background:var(--bad);color:#140608;font:600 11px/15px "Geist",system-ui,sans-serif}
+</style>
+</head>
+<body>
+<header><b>Merkitse huonot kuvat</b><span>Klikkaa kuvaa, jos se on käyttökelvoton opetukseen: pimeä, sumea, likainen linssi, väärä suunta. Uusi klikkaus poistaa merkinnän. <span id="n"></span></span></header>
+<div class="grid" id="grid"></div>
+<script>
+const $=id=>document.getElementById(id);
+let bad={};
+const count=()=>$("n").textContent=`Merkitty ${Object.keys(bad).length}.`;
+fetch("items").then(r=>r.json()).then(d=>{
+  bad=d.bad;
+  $("grid").innerHTML=d.items.map((x,k)=>`<button data-id="${x.id}" class="${bad[x.id]?"bad":""}" aria-pressed="${!!bad[x.id]}">
+    <img src="images/${x.id}.jpg" loading="lazy" alt="Kuva ${k+1}"><small>${k+1}</small></button>`).join("");
+  count();
+});
+$("grid").onclick=async e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  const on=!bad[b.dataset.id];
+  if(on) bad[b.dataset.id]=true; else delete bad[b.dataset.id];
+  b.classList.toggle("bad",on); b.setAttribute("aria-pressed",on); count();
+  await fetch("flag",{method:"POST",body:JSON.stringify({id:b.dataset.id,bad:on})});
+};
+</script>
+</body>
+</html>

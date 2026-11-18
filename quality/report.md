@@ -2,6 +2,8 @@
 
 Vastattu 300/300 kuvaan. Käyttökelvottomia 11 (en näe 9, ei tienpintaa 2).
 
+Tarkistajia yksi, ei tieasiantuntija, ja hänellä on vahva protania (puna-vihervärisokeus), joka vaikeuttaa osaa sävyeroista. Vaikutusta ei voi arvioida tarkasti; ainoa vihje on, että päivän värikuvissa tarkka osuma oli parempi kuin yön harmaasävykuvissa. Tulos ei siis ole puolueeton ihmisen yläraja.
+
 ## Yhtäpitävyys
 
 | | kuvia | sama luokka | talvikeli samoin* |
@@ -35,3 +37,14 @@ Vastattu 300/300 kuvaan. Käyttökelvottomia 11 (en näe 9, ei tienpintaa 2).
 |---|---:|---|---|
 | 10062 | 3 | kostea → luminen, luminen → märkä, jää/kuura → märkä | 20261117T0400Z_C1054809, 20261117T1600Z_C1054809, 20261114T2200Z_C1054809 |
 | 9002 | 2 | luminen → kostea, jää/kuura → kuiva | 20261113T1000Z_C0953109, 20261114T2200Z_C0953109 |
+
+## Huonoiksi merkityt kuvat
+
+2 kuvaa 2 kamerasta (pimeä, sumea, likainen linssi, väärä suunta).
+
+| kamera | kuvia | kuvat |
+|---|---:|---|
+| C18534 | 1 | 20261113T1600Z_C1853409 |
+| C08574 | 1 | 20261111T1600Z_C0857409 |
+
+Ilman huonoja kuvia talvikeli samoin 79 % (289 kuvaa).

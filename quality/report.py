@@ -3,7 +3,8 @@
   python quality/report.py      # tulostaa ja kirjoittaa quality/report.md
 
 Kertoo, kuinka usein kuva ja anturi ovat samaa mieltä (luokittain sekä karkeasti talvikeli vai ei),
-mitkä luokat menevät sekaisin, kuinka moni kuva on käyttökelvoton ja millä asemilla erimielisyydet toistuvat.
+mitkä luokat menevät sekaisin, kuinka moni kuva on käyttökelvoton, millä asemilla erimielisyydet toistuvat
+ja mitkä kamerat on merkitty huonoiksi (ruudukko, quality/bad_images.json).
 Ihmisen ja anturin yhtäpitävyys on samalla realistinen yläraja sille, mitä kuvasta voi oppia.
 """
 from __future__ import annotations
@@ -32,11 +33,14 @@ def rows(sample: list[dict], answers: dict) -> list[dict]:
     return [{**x, **read(answers[x["id"]])} for x in sample if x["id"] in answers]
 
 
-def report(r: list[dict], total: int) -> str:
+def report(r: list[dict], total: int, bad: dict) -> str:
     seen = [x for x in r if x["answer"] not in UNUSABLE]
     lost = ", ".join(f"{u} {sum(x['answer'] == u for x in r)}" for u in UNUSABLE)
     out = ["# Sokkotarkistus: kuva vs. anturi\n",
-           f"Vastattu {len(r)}/{total} kuvaan. Käyttökelvottomia {len(r) - len(seen)} ({lost}).\n"]
+           f"Vastattu {len(r)}/{total} kuvaan. Käyttökelvottomia {len(r) - len(seen)} ({lost}).\n",
+           "Tarkistajia yksi, ei tieasiantuntija, ja hänellä on vahva protania (puna-vihervärisokeus), joka vaikeuttaa "
+           "osaa sävyeroista. Vaikutusta ei voi arvioida tarkasti; ainoa vihje on, että päivän värikuvissa tarkka osuma "
+           "oli parempi kuin yön harmaasävykuvissa. Tulos ei siis ole puolueeton ihmisen yläraja.\n"]
 
     unsure = [x for x in seen if not x["sure"]]
     if unsure:
@@ -74,13 +78,27 @@ def report(r: list[dict], total: int) -> str:
     else:
         out.append("Ei yhtään asemaa, jolla erimielisyys toistuisi otoksessa (yksittäisiä "
                    f"{sum(len(v) for v in by_station.values())}).")
+    if bad:
+        cams = {}
+        for x in r:
+            if x["id"] in bad:
+                cams.setdefault(x["camera"], []).append(x["id"])
+        out.append(f"\n## Huonoiksi merkityt kuvat\n\n{len(bad)} kuvaa {len(cams)} kamerasta "
+                   "(pimeä, sumea, likainen linssi, väärä suunta).\n")
+        out.append("| kamera | kuvia | kuvat |\n|---|---:|---|")
+        for cam, ids in sorted(cams.items(), key=lambda kv: -len(kv[1])):
+            out.append(f"| {cam} | {len(ids)} | {', '.join(ids)} |")
+        good = [x for x in seen if x["id"] not in bad]
+        coarse = sum((x["answer"] in WINTER) == (x["class"] in WINTER) for x in good)
+        out.append(f"\nIlman huonoja kuvia talvikeli samoin {pct(coarse, len(good))} ({len(good)} kuvaa).")
     return "\n".join(out) + "\n"
 
 
 def main() -> None:
     sample = json.loads((HERE / "sample.json").read_text())
     answers = json.loads((HERE / "answers.json").read_text()) if (HERE / "answers.json").exists() else {}
-    text = report(rows(sample, answers), len(sample))
+    bad = json.loads((HERE / "bad_images.json").read_text()) if (HERE / "bad_images.json").exists() else {}
+    text = report(rows(sample, answers), len(sample), bad)
     (HERE / "report.md").write_text(text)
     print(text)
 

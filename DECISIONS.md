@@ -1012,3 +1012,11 @@ yhdessä paikassa (`labels.py`) eivätkä voi erota selaimen ja opetusdatan väl
 avauksessa (CDN-välimuisti, 60 s), haetaan vasta piirron jälkeen, joten avautuminen ei hidastu. 24 tunnin historia
 päivittyy edelleen vain keruuajossa. Hylätty: ulkoinen ajastin (tunnus ulkoiseen palveluun) ja asemakohtaiset haut
 (165 pyyntöä). Tietosuojarivi: "Kamerakuvat ja kelitiedot" (sama palvelin kuin ennen).
+
+**Mallin tavoite (18.11.):** päätavoite talvikeli kyllä/ei (lunta tai jäätä) ja kitka-arvio, koska sokkotarkistuksessa
+ne näkyivät kuvasta selvimmin. Viisi luokkaa säilyy kokeiluna rinnalla: tarkoitus on mitata, kuinka hyvin malli
+erottaa kuivan, kostean ja märän sekä jään ja lumen, vaikka ihminen ei siihen pystynyt. Tarkistajalla on vahva
+protania, mikä kirjataan raporttiin. Vaikutusta ei voi arvioida tarkasti (päivän värikuvissa tarkka osuma oli
+parempi kuin yön harmaasävykuvissa), joten ihmisen tulos ei ole puolueeton yläraja.
+Huonot kuvat merkitään ruudukossa (`/grid`, `quality/bad_images.json`) erikseen luokkavastauksesta, jotta raportti
+voi listata kamerat ja laskea tuloksen myös ilman niitä.

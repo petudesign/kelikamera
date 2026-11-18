@@ -1,6 +1,6 @@
 """Sokkotarkistuksen sivu: kuva kerrallaan, vastaus näppäimellä, tallennus heti quality/answers.json:iin.
 
-  python quality/review.py [portti]     # oletus 8770
+  python quality/review.py [portti]     # oletus 8770; huonojen kuvien merkintä ruudukossa: /grid
 
 Sivu saa otoksesta vain kuvan tunnisteen ja ottoajan, ei anturin luokkaa, ettei se ohjaa vastausta.
 """
@@ -15,12 +15,17 @@ ROOT = Path(__file__).resolve().parent.parent
 HERE = ROOT / "quality"
 SAMPLE = HERE / "sample.json"
 ANSWERS = HERE / "answers.json"
+BAD = HERE / "bad_images.json"
 IMAGES = ROOT / "out" / "review" / "images"
 FONTS = ROOT / "site" / "vendor" / "geist"
 
 
-def answers() -> dict:
-    return json.loads(ANSWERS.read_text()) if ANSWERS.exists() else {}
+def load(path: Path) -> dict:
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def save(path: Path, data: dict) -> None:
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -36,11 +41,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = self.path.split("?")[0]
-        if path == "/":
-            self.send((HERE / "review.html").read_bytes(), "text/html; charset=utf-8")
+        if path in ("/", "/grid"):
+            page = "grid.html" if path == "/grid" else "review.html"
+            self.send((HERE / page).read_bytes(), "text/html; charset=utf-8")
         elif path == "/items":
             blind = [{"id": x["id"], "time": x["imageTime"]} for x in json.loads(SAMPLE.read_text())]
-            self.send(json.dumps({"items": blind, "answers": answers()}).encode(), "application/json")
+            self.send(json.dumps({"items": blind, "answers": load(ANSWERS), "bad": load(BAD)}).encode(),
+                      "application/json")
         elif path.startswith("/images/") and (f := IMAGES / Path(path).name).is_file():
             self.send(f.read_bytes(), "image/jpeg")
         elif path.startswith("/fonts/") and (f := FONTS / Path(path).name).is_file():
@@ -49,16 +56,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send(b"", "text/plain", 404)
 
     def do_POST(self) -> None:
-        if self.path != "/answer":
-            return self.send(b"", "text/plain", 404)
         msg = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        a = answers()
-        if msg.get("answer") is None:
-            a.pop(msg["id"], None)
+        if self.path == "/answer":
+            path, value = ANSWERS, msg.get("answer")
+        elif self.path == "/flag":
+            path, value = BAD, True if msg.get("bad") else None
         else:
-            a[msg["id"]] = msg["answer"]
-        ANSWERS.write_text(json.dumps(a, ensure_ascii=False, indent=1, sort_keys=True))
-        self.send(json.dumps({"done": len(a)}).encode(), "application/json")
+            return self.send(b"", "text/plain", 404)
+        data = load(path)
+        if value is None:
+            data.pop(msg["id"], None)
+        else:
+            data[msg["id"]] = value
+        save(path, data)
+        self.send(json.dumps({"done": len(data)}).encode(), "application/json")
 
 
 if __name__ == "__main__":
