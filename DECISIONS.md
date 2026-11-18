@@ -988,3 +988,27 @@ oman tyylin kaikkiin listoihin; sama väri kaikkialla on johdonmukaisempi).
 joten kartta oli tunteja vanha. Ajastus on nyt minuuteilla 7, 22, 37 ja 52. Data ei ollut vaarassa (historiasta
 täydennys), ja jono (`concurrency`) estää päällekkäiset ajot; ylimääräinen ajo ei hae mitään, jos keruuhetket ovat jo
 tallessa. Hylätty toistaiseksi: ulkoinen ajastin (vaatisi tunnuksen ulkoiseen palveluun).
+
+**Sokkotarkistus ennen koulutusta (17.11.):** `quality/`: 300 kuvan otos (50 per luokka + 50 ohutta kerrosta, kukin
+eri kameralta, 27 keruuhetkestä, siemen kiinteä), tarkistussivu joka ei näytä anturin luokkaa (ettei se ohjaa
+vastausta) ja raportti `quality/report.md`. Otos säilytetään, jotta sama joukko kelpaa myöhemmin mallin testiin.
+Kuvat haetaan aina Hugging Facesta, koska koneella oli kehitysvaiheen tiedostoja samoilla aikaleimoilla mutta eri
+sisällöllä. Lisätty myös epävarma-merkintä (parhaan arvauksen lisäksi), koska yön harmaissa kuvissa kuivan ja märän
+ero ei näy; ensimmäinen kierros tehtiin ilman sitä.
+Tulos (yksi tarkistaja): talvikeli kyllä/ei samoin kuin anturi 79 %, tarkka luokka 41 %. Luminen näkyy (86 %), mutta
+anturin jää/kuura näyttää kuvassa lähes aina lumelta (38/49), ja kuiva/kostea/märkä menevät sekaisin. Ohuista
+kerroksista puolet näyttää talvikeliltä, puolet ei, joten niiden jättäminen pois opetuksesta oli perusteltua.
+Seuraus mallille (päättämättä): tavoitteeksi talvikeli kyllä/ei ja kitka viiden luokan sijaan.
+Tarkistussääntö jälkikäteen: arvioidaan ajoura, koska anturi mittaa sitä. Ensimmäisellä kierroksella vastattiin
+lumiseksi myös, kun loskaa oli vain kaistojen välissä, mikä selittää osan anturin "märkä" → kuvan "luminen"
+-erimielisyyksistä (16/48). Toinen kierros säännön ja epävarma-merkinnän kanssa kertoisi, paljonko yhtäpitävyys nousee.
+
+**Anturien nykytila selaimessa (18.11.):** neljän ajastuksen tunnissa jälkeenkin GitHub ajoi keruun 15 tunnin aikana
+kerran, joten kartan "Mitattu" oli 7 tuntia vanha. Ajastuksen tihentäminen ei auta, koska GitHub ei takaa ajoja.
+Nyt selain hakee asemien nykytilan suoraan Digitrafficista (`site/js/live.js`) kartan piirron jälkeen ja viiden
+minuutin välein, kun sivu on näkyvissä, ja päivittää kameran lukemat, jos ne ovat keruuajon lukemia uudempia.
+Luokittelun säännöt (koodit, ohut kerros, 90 min ikäraja) tulevat `latest.json`:in `rules`-kentästä, joten ne ovat
+yhdessä paikassa (`labels.py`) eivätkä voi erota selaimen ja opetusdatan välillä. Hinta: noin 390 kt pakattua dataa
+avauksessa (CDN-välimuisti, 60 s), haetaan vasta piirron jälkeen, joten avautuminen ei hidastu. 24 tunnin historia
+päivittyy edelleen vain keruuajossa. Hylätty: ulkoinen ajastin (tunnus ulkoiseen palveluun) ja asemakohtaiset haut
+(165 pyyntöä). Tietosuojarivi: "Kamerakuvat ja kelitiedot" (sama palvelin kuin ennen).

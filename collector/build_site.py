@@ -26,7 +26,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).parent))
 from digitraffic import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
 from summary import km  # noqa: E402
-from labels import CLASS_OF_CODE, CLASSES, is_thin, label, station_index  # noqa: E402
+from labels import CLASS_OF_CODE, CLASSES, THIN_MAX_LAYER_MM, THIN_MIN_FRICTION, is_thin, label, station_index  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "out"
@@ -224,6 +224,9 @@ def main() -> None:
         "built": datetime.now(timezone.utc).isoformat(),
         "maxKm": MAX_KM,
         "classes": CLASSES,
+        # selain päivittää nykytilan suoraan Digitrafficista samoilla säännöillä (site/js/live.js)
+        "rules": {"codes": {str(k): v for k, v in CLASS_OF_CODE.items()}, "maxAgeMin": SENSOR_MAX_AGE.seconds // 60,
+                  "thinFriction": THIN_MIN_FRICTION, "thinLayer": THIN_MAX_LAYER_MM},
         "times": [s.isoformat() for s in slots],
         "counts": counts,
         "cameras": cams,

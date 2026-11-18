@@ -1,5 +1,12 @@
 // Vasen kortti: selite, varoituslista, Liukastumassa, tiet, kamerahaku, välilehdet ja kieli.
 
+// datasta riippuvat osat (myös anturien päivityksen jälkeen, ks. live.js)
+function renderData(){
+  const at=DATA.live||DATA.run, u=document.getElementById("updated"), today=new Date(at).toDateString()===new Date().toDateString();
+  u.textContent=isMobile()&&today?fmtClock(at):fmt(at,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=at;
+  const worse=worsening(), bd=document.querySelector("#tab-worse .badge"); bd.hidden=!worse.length; bd.textContent=worse.length||"";
+  renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+}
 function renderAll(){
   document.documentElement.lang=LANG; document.title=T().title;
   document.getElementById("map").setAttribute("aria-label",T().mapLabel);
@@ -8,9 +15,6 @@ function renderAll(){
   document.querySelectorAll("[data-t]").forEach(el=>el.textContent=T()[el.dataset.t]);
   document.getElementById("privacyList").innerHTML=T().privacyItems.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
   document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
-  const u=document.getElementById("updated"); const today=new Date(DATA.run).toDateString()===new Date().toDateString();
-  u.textContent=isMobile()&&today?fmtClock(DATA.run):fmt(DATA.run,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=DATA.run;
-  const worse=worsening();
   // tekstit päivitetään vain, jos ne muuttuvat: uudelleenpiirto laskettaisiin uudeksi LCP:ksi
   const setTab=(id,txt)=>{const sp=document.querySelector(`#${id}>span`); if(sp.textContent!==txt) sp.textContent=txt;};
   setTab("tab-map",T().tabMap); setTab("tab-route",T().tabRoute);
@@ -18,8 +22,7 @@ function renderAll(){
   document.getElementById("from").placeholder=T().placeholderFrom; document.getElementById("to").placeholder=T().placeholderTo;
   document.getElementById("locate").setAttribute("aria-label",T().myLoc); document.getElementById("locate").title=T().myLoc;
   setTab("tab-worse",T().tabWorse); setTab("tab-roads",T().tabRoads);
-  const bd=document.querySelector("#tab-worse .badge"); bd.hidden=!worse.length; bd.textContent=worse.length||"";
-  renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+  renderData();
   if(current) current.type==="cam"?(delete panelEl.dataset.cam,openCam(current.id,true)):current.type==="warnlist"?openWarnList(current.only):openWarn(current.i,true);
 }
 
