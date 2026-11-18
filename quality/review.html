@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kelikamera · sokkotarkistus</title>
+<style>
+@font-face{font-family:"Geist";font-weight:100 900;src:url(fonts/geist-latin-wght-normal.woff2) format("woff2")}
+:root{--bg:#0a0a0a;--surface:#151515;--surface-2:#1c1c1c;--line:#262626;--text:#fafafa;--text-2:#a3a3a3}
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font:15px/1.45 "Geist",system-ui,sans-serif;display:grid;place-items:center;padding:16px}
+main{width:min(900px,100%)}
+header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;color:var(--text-2)}
+header b{color:var(--text);font-weight:600}
+.bar{height:3px;background:var(--surface-2);border-radius:3px;margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--text);border-radius:3px}
+img{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--surface);border-radius:10px;display:block}
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:16px}
+button{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 8px;cursor:pointer;text-align:left}
+button:hover{background:var(--surface-2)}
+button.on{border-color:var(--text)}
+button.on.unsure{border-style:dashed}
+.unsure-toggle{margin-top:8px;display:flex;align-items:center;gap:8px;color:var(--text-2);font-size:13px;cursor:pointer}
+.unsure-toggle input{accent-color:var(--text)}
+button kbd{font:inherit;color:var(--text-2);margin-right:6px}
+p{color:var(--text-2);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <header><b>Miltä tienpinta näyttää?</b><span id="pos"></span></header>
+  <div class="bar"><i id="prog"></i></div>
+  <img id="img" alt="Kelikameran kuva">
+  <div class="keys" id="keys"></div>
+  <label class="unsure-toggle"><input type="checkbox" id="unsure"> Epävarma: paras arvaus, mutta en ole varma (välilyönti)</label>
+  <p><b style="color:var(--text);font-weight:500">Arvioi ajoura</b> (kohta, jossa renkaat kulkevat): anturi mittaa sitä. Jos loskaa on vain kaistojen välissä tai reunoilla, valitse ajouran mukaan ja merkitse epävarmaksi.</p>
+  <p>Vastaa kuvan perusteella. Anturin luokka ei näy tässä, vertailu tehdään vasta raportissa (quality/report.py).
+    Epävarma koskee seuraavaa vastausta. Kuvaan n pääsee osoitteella #n. ← edellinen · → seuraava · vastaus tallentuu heti.</p>
+</main>
+<script>
+const CHOICES=[["1","kuiva","Kuiva"],["2","kostea","Kostea"],["3","märkä","Märkä"],["4","luminen","Luminen / sohjo"],
+  ["5","jää/kuura","Jää / kuura"],["0","en näe","En näe"],["x","ei tienpintaa","Ei tienpintaa"]];
+let items=[], answers={}, i=0;
+const $=id=>document.getElementById(id);
+// vanhat vastaukset tallennettiin pelkkänä luokkana
+const read=x=>typeof x==="string"?{answer:x,sure:true}:x;
+
+function show(){
+  const it=items[i], done=Object.keys(answers).length;
+  $("img").src=`images/${it.id}.jpg`;
+  $("pos").textContent=`${i+1}/${items.length} · vastattu ${done} · otettu ${new Date(it.time).toLocaleString("fi-FI",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`;
+  $("prog").style.width=`${done/items.length*100}%`;
+  const a=answers[it.id]&&read(answers[it.id]);
+  document.querySelectorAll("#keys button").forEach(b=>{const on=!!a&&a.answer===b.dataset.a;
+    b.classList.toggle("on",on); b.classList.toggle("unsure",on&&!a.sure)});
+  const next=items[i+1]; if(next) new Image().src=`images/${next.id}.jpg`;
+}
+async function answer(a){
+  const it=items[i], value={answer:a,sure:!$("unsure").checked};
+  answers[it.id]=value; $("unsure").checked=false;
+  await fetch("answer",{method:"POST",body:JSON.stringify({id:it.id,answer:value})});
+  const open=items.findIndex((x,k)=>k>i&&!answers[x.id]);
+  i=open>=0?open:Math.min(i+1,items.length-1);
+  show();
+}
+$("keys").innerHTML=CHOICES.map(([k,a,n])=>`<button data-a="${a}"><kbd>${k.toUpperCase()}</kbd>${n}</button>`).join("");
+$("keys").onclick=e=>{const b=e.target.closest("button"); if(b){b.blur();answer(b.dataset.a)}};
+addEventListener("keydown",e=>{
+  const c=CHOICES.find(([k])=>k===e.key.toLowerCase());
+  if(e.key===" "){if(e.target!==$("unsure")){e.preventDefault();$("unsure").checked=!$("unsure").checked}}
+  else if(c) answer(c[1]);
+  else if(e.key==="ArrowLeft"){i=Math.max(0,i-1);show()}
+  else if(e.key==="ArrowRight"){i=Math.min(items.length-1,i+1);show()}
+});
+fetch("items").then(r=>r.json()).then(d=>{
+  items=d.items; answers=d.answers;
+  const open=items.findIndex(x=>!answers[x.id]), n=parseInt(location.hash.slice(1));
+  i=n>=1&&n<=items.length?n-1:open>=0?open:0; show();
+});
+</script>
+</body>
+</html>
