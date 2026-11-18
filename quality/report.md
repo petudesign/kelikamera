@@ -1,19 +1,19 @@
 # Sokkotarkistus: kuva vs. anturi
 
-Vastattu 300/300 kuvaan. Käyttökelvottomia 10 (en näe 9, ei tienpintaa 1).
+Vastattu 300/300 kuvaan. Käyttökelvottomia 11 (en näe 9, ei tienpintaa 2).
 
 ## Yhtäpitävyys
 
 | | kuvia | sama luokka | talvikeli samoin* |
 |---|---:|---:|---:|
-| kaikki | 290 | 41 % | 79 % |
-| päivä | 158 | 44 % | 77 % |
+| kaikki | 289 | 41 % | 79 % |
+| päivä | 157 | 45 % | 76 % |
 | yö (IR) | 132 | 37 % | 82 % |
 | kuiva | 48 | 40 % | 94 % |
 | kostea | 49 | 27 % | 92 % |
 | märkä | 48 | 42 % | 67 % |
 | luminen | 49 | 86 % | 88 % |
-| jää/kuura | 49 | 6 % | 84 % |
+| jää/kuura | 48 | 6 % | 83 % |
 | ohut | 47 | 47 % | 49 % |
 
 \* talvikeli = luminen tai jää/kuura; sama, jos kuva ja anturi ovat samaa mieltä siitä, onko talvikeli. Ohuissa kerroksissa anturin luokka on lumi tai jää, joten sarake kertoo, kuinka usein kuvassa näkyy talvikeli.
@@ -26,7 +26,7 @@ Vastattu 300/300 kuvaan. Käyttökelvottomia 10 (en näe 9, ei tienpintaa 1).
 | kostea | 22 | 13 | 10 | 4 | · | 1 | · |
 | märkä | 4 | 8 | 20 | 16 | · | 2 | · |
 | luminen | 2 | 1 | 3 | 42 | 1 | · | 1 |
-| jää/kuura | 4 | 2 | 2 | 38 | 3 | 1 | · |
+| jää/kuura | 4 | 2 | 2 | 37 | 3 | 1 | 1 |
 | ohut | 4 | 6 | 14 | 23 | · | 3 | · |
 
 ## Asemat, joilla kuva ja anturi ovat toistuvasti eri mieltä talvikelistä
