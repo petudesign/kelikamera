@@ -64,6 +64,7 @@ function addLayers(){
       "circle-opacity":["case",["==",["get","dim"],1],.12,1],"circle-stroke-opacity":["case",["==",["get","dim"],1],0,1]}});
   map.addLayer({id:"cams-sel",type:"circle",source:"cams",filter:["==",["get","id"],""],
     paint:{"circle-radius":12,"circle-color":"transparent","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
+  elevateLabels();
 
   const tip=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
   map.on("mouseenter","cams",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;
@@ -84,6 +85,29 @@ function addLayers(){
   });
   applyFilter();
 }
+// Nosta kaupunkinimet ja päätienumerot kamerapisteiden yläpuolelle ja paranna luettavuutta hienovaraisella halolla.
+function elevateLabels(){
+  const styles={
+    highway_name_motorway:{color:"rgba(198,205,214,0.8)",halo:"rgba(10,10,10,0.95)",width:2,blur:0.5},
+    place_town:{color:"rgba(186,192,200,0.78)",halo:"rgba(10,10,10,0.92)",width:1.6,blur:0.6},
+    place_city:{color:"rgba(220,224,230,0.86)",halo:"rgba(10,10,10,0.94)",width:1.8,blur:0.6},
+    place_city_large:{color:"rgba(240,242,245,0.92)",halo:"rgba(10,10,10,0.95)",width:2,blur:0.6}
+  };
+  for(const [id,st] of Object.entries(styles)){
+    if(!map.getLayer(id)) continue;
+    map.setPaintProperty(id,"text-color",st.color);
+    map.setPaintProperty(id,"text-halo-color",st.halo);
+    map.setPaintProperty(id,"text-halo-width",st.width);
+    map.setPaintProperty(id,"text-halo-blur",st.blur);
+    map.moveLayer(id);
+  }
+  if(map.getLayer("highway_name_other")){
+    map.setPaintProperty("highway_name_other","text-color","rgba(155,162,170,0.72)");
+    map.setPaintProperty("highway_name_other","text-halo-color","rgba(10,10,10,0.9)");
+    map.setPaintProperty("highway_name_other","text-halo-width",1.5);
+  }
+}
+
 const ready=()=>!!map.getLayer("cams");
 function refreshMap(){ if(!ready())return; map.getSource("cams").setData(geojson()); applyFilter(); }
 function refreshWarn(){ if(!ready())return; ["warn-fill","warn-line"].forEach(l=>map.setFilter(l,warnFilter())); }
@@ -93,6 +117,7 @@ function applyFilter(){
   if(hidden.size) f.push(["!",["in",["get","k"],["literal",[...hidden]]]]);
   if(road!=null) f.push(["==",["get","road"],road]);
   map.setFilter("cams",f.length>1?f:null);
-  map.setFilter("cams-halo",["all",["==",["get","k"],"jää/kuura"],["==",["get","dim"],0],...(road!=null?[["==",["get","road"],road]]:[]),...(hidden.has("jää/kuura")?[["==",1,0]]:[])]);
+  map.setFilter("cams-halo",hidden.has("jää/kuura")?["==",["get","k"],""]
+    :["all",["==",["get","k"],"jää/kuura"],["==",["get","dim"],0],...(road!=null?[["==",["get","road"],road]]:[])]);
 }
 const select=id=>{if(ready())map.setFilter("cams-sel",["==",["get","id"],id])};

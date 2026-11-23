@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="dark">
 <title>Kelikamera · Suomen tiet nyt</title>
 <meta name="description" content="Tien pinnan tila Fintrafficin kelikameroissa: mitattu tiesääasemilta, tekoälyarvio tulossa.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' style='background:%230b0d10' width='22' height='22' viewBox='0 0 24 24' aria-hidden='true'><defs><clipPath id='lens'><circle cx='12' cy='13' r='5.2'/></clipPath></defs><path d='M8.2 6 9.6 3.6h4.8L15.8 6' fill='none' stroke='%23eef1f4' stroke-width='1.7' stroke-linejoin='round'/><rect x='1.8' y='6' width='20.4' height='14.6' rx='3' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><circle cx='12' cy='13' r='5.2' fill='none' stroke='%23eef1f4' stroke-width='1.7'/><g clip-path='url(%23lens)' stroke-linecap='round'><path d='M9.3 18.5 11.3 8.2M14.7 18.5 12.7 8.2' stroke='%23eef1f4' stroke-width='1.2'/><path d='M12 17.6v-1.8M12 14.3v-1.5M12 11.4v-1.2' stroke='%23f5c518' stroke-width='1.2'/></g><circle cx='18.6' cy='9' r='1' fill='%23ff4766'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' style='background:%230a0a0a;border-radius:4px' width='22' height='22' viewBox='0 0 24 24' fill='none' aria-hidden='true'><path fill-rule='evenodd' clip-rule='evenodd' d='M6.5 2.5h11a4 4 0 0 1 4 4v11a4 4 0 0 1-4 4h-1.2L14 14.9a5.2 5.2 0 1 0-4 0l-2.3 6.6H6.5a4 4 0 0 1-4-4v-11a4 4 0 0 1 4-4Z' fill='%23fafafa'/><circle cx='12' cy='10.2' r='2.5' fill='%23f5c518'/></svg>">
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <!-- fontti ja MapLibre omasta reposta: kävijän IP-osoite ei mene Googlelle eikä CDN:lle (GDPR) -->
 <link rel="preload" href="vendor/geist/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -43,8 +43,10 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 html,body{overscroll-behavior:none}
-button,[role="tab"],a{touch-action:manipulation}
-button,[role="tab"]{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+[hidden]{display:none!important}
+button,[role="tab"]{touch-action:manipulation}
+a{touch-action:manipulation}
+button,[role="tab"],.timeline,.key header,.rows,.scope,.privacy summary,.explain summary{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .tabpanel,.panel .scroll,.sugg{overscroll-behavior:contain}
 html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Geist",system-ui,sans-serif;font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased}
 button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
@@ -67,7 +69,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .brand{display:flex;align-items:center;gap:9px}
 .brand .mark{flex:none;color:var(--text)}
 .key h1{font-size:16px;font-weight:600;letter-spacing:-.015em}
-.key time{white-space:nowrap;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.key time{white-space:nowrap;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;margin-right:4px}
 /* segmentoitu valitsin (FI/EN) */
 .lang{display:flex;padding:2px;gap:2px;border-radius:var(--r-md);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)}
 .lang button{padding:3px 8px;font-size:12px;font-weight:500;color:var(--text-3);min-width:32px;border-radius:var(--r-sm)}
@@ -80,12 +82,16 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .tabs button[aria-selected="true"]::after{opacity:1;transform:none}
 .tabs .badge[hidden]{display:none}
 .badge,.tabs .badge{display:inline-block;min-width:18px;margin-left:6px;padding:1px 5px;border-radius:var(--r-xs);background:var(--jaa);color:#140608;font-size:11px;line-height:15px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
-.tabpanel{overflow:auto}
+.tabpanel{overflow:auto;flex:1 1 auto;min-height:0;padding-bottom:8px}
 .key.loading #warnsec,.key.loading .credits,.key.loading .privacy{visibility:hidden}
 @media (min-width:721px){#rows:empty{min-height:288px}}
-.fold{display:none;width:36px;height:32px;place-items:center;border-radius:var(--r-md);color:var(--text-2)}
-.fold svg{transition:transform .2s var(--ease-out)}
-.key.collapsed .fold svg{transform:rotate(-90deg)}
+.fold{display:none;width:30px;height:28px;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair)}
+.fold svg{transition:transform .2s var(--ease-out);transform:rotate(180deg)}
+.key.collapsed .fold svg{transform:none}
+.key.collapsed .tabpanel{display:none}
+.key.collapsed .tabs{box-shadow:none}
+.key.collapsed .tabs button[aria-selected="true"]{color:var(--text-3)}
+.key.collapsed .tabs button[aria-selected="true"]::after{opacity:0}
 .tabpanel[hidden]{display:none}
 
 /* ---------- listarivi: yhteinen kaikille listoille (selite, listat, varoitukset) ---------- */
@@ -95,9 +101,12 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .row .n{text-align:right}
 .row .lbl{font-size:14px}
 .row .n{font-size:13px;color:var(--text-2)}
-/* osuus kaikista kameroista: oma sarakkeensa, neutraali ura */
+/* osuus suurimmasta mitatusta luokasta: oma sarakkeensa; "Ei mittausta" erotettu jakoviivalla */
 .row .share{height:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden}
-.row .share i{display:block;height:100%;min-width:2px;border-radius:2px;background:rgba(255,255,255,.42)}
+.row .share i{display:block;height:100%;min-width:3px;border-radius:2px;background:currentColor;opacity:.75}
+.rows li.sep{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.rows li.sep .share{visibility:hidden}
+.rows li.sep .lbl{color:var(--text-2)!important}
 .row[aria-pressed="false"] .lbl,.row[aria-pressed="false"] .n{opacity:.4;text-decoration:line-through}
 .row[aria-pressed="false"] .sw{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--text-3)}
 .item{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;padding:10px}
@@ -112,7 +121,14 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 
 /* ---------- osiot ---------- */
 .sec{padding:16px;box-shadow:inset 0 1px 0 var(--line)}
-.sec.explain{box-shadow:none;padding:14px 16px 4px}
+.explain{padding:8px 16px 2px;font-size:12px;color:var(--text-2)}
+.explain summary{display:flex;align-items:center;gap:7px;padding:4px 0;cursor:pointer;list-style:none;color:var(--text-2)}
+.explain summary::-webkit-details-marker{display:none}
+.explain summary .ic{width:14px;height:14px;color:var(--text-3)}
+.explain summary .chev{margin-left:auto;transition:transform .2s var(--ease-out)}
+.explain[open] summary .chev{transform:rotate(90deg)}
+.explain .note{padding:4px 0 6px 21px}
+@media (hover:hover) and (pointer:fine){.explain summary:hover{color:var(--text)}}
 .sec h2{font-size:14px;font-weight:600;letter-spacing:-.005em;color:var(--text);display:flex;justify-content:space-between;align-items:baseline}
 .sec h2 .num{font-weight:500;font-size:13px;color:var(--text-3)}
 .sec .sub{margin:2px 0 8px}
@@ -145,8 +161,10 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .field input:focus-visible,.roadsel select:focus-visible{outline:0;box-shadow:inset 0 0 0 1px var(--focus),0 0 0 3px rgba(255,210,63,.18)}
 .roadsel{display:flex;gap:10px;align-items:center;padding:12px 16px}
 .roadsel label{font-size:13px;color:var(--text-2)}
-.roadsel select{flex:1;font-size:15px;padding:8px 32px 8px 11px;appearance:none;-webkit-appearance:none;
-  background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23a3a3a3' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 11px center}
+.roadsel select{flex:1;font-size:15px;padding:8px 32px 8px 11px;appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23a3a3a3' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;background-size:12px 12px}
+.roadsel select::picker-icon{display:none}
+.roadsel select::-ms-expand{display:none}
 .iconbtn{flex:none;width:40px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
 .roadstrip{padding:12px 16px 10px}
 .roadstrip .bars{display:flex;gap:1px;height:14px;border-radius:var(--r-sm);overflow:hidden}
@@ -164,8 +182,36 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .sugg button[aria-selected="true"]{background:var(--surface-3)}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .camfind{padding:12px 16px 0}
-.camfind input{font-size:15px;padding-top:8px;padding-bottom:8px}
+.camfind input{font-size:15px;padding-top:8px;padding-bottom:8px;padding-right:34px}
+.camfind .clr{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--text-3)}
+.camfind .clr .ic{width:14px;height:14px;vertical-align:0}
+@media (hover:hover) and (pointer:fine){.camfind .clr:hover{color:var(--text);background:var(--surface-2)}}
+.camfind .clr:active{transform:translateY(-50%) scale(.92)}
 .camfind .sugg{left:16px;right:16px;z-index:4}
+.favcams{padding:10px 16px 2px}
+.favhead,.saved-hd{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--text-3);margin-bottom:6px}
+.favhead .ic,.saved-hd .ic{width:12px;height:12px;color:var(--warn);fill:var(--warn)}
+.favchips{display:flex;flex-wrap:wrap;gap:6px}
+.favchip{display:inline-flex;align-items:center;gap:7px;max-width:100%;min-height:30px;padding:4px 10px;border-radius:999px;
+  font-size:12.5px;color:var(--text);background:var(--surface-2);box-shadow:var(--hair),var(--lift);
+  transition:background-color .12s ease,transform .16s var(--ease-out)}
+.favchip .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.favchip .ft{font-size:11.5px;color:var(--text-2);white-space:nowrap}
+.favchip:active{transform:scale(.96)}
+@media (hover:hover) and (pointer:fine){.favchip:hover{background:var(--surface-3)}}
+.saved-sec{padding:6px 6px 2px}
+.saved-sec .saved-hd{padding:2px 8px 0}
+.saved-list{list-style:none;display:grid;gap:4px}
+.saved-row{display:flex;align-items:center;gap:4px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.saved-pick{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:10px 8px 10px 12px;text-align:left;font-size:13.5px;font-weight:500;color:var(--text);border-radius:var(--r-lg)}
+.saved-pick .ic{width:14px;height:14px;color:var(--warn);fill:var(--warn)}
+.saved-pick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved-del{flex:none;width:34px;height:34px;margin-right:3px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-3)}
+@media (hover:hover) and (pointer:fine){.saved-pick:hover{background:var(--surface-3)}.saved-del:hover{color:var(--text);background:var(--surface-3)}}
+.trip-acts{display:flex;align-items:center;gap:2px;flex:none}
+.saveroute .ic{width:13px;height:13px}
+.saveroute[aria-pressed="true"]{color:var(--warn)}
+.saveroute[aria-pressed="true"] .ic{color:var(--warn);fill:var(--warn)}
 .sugg .cam{display:grid;grid-template-columns:10px 1fr auto;gap:10px;align-items:center}
 .sugg .cam small{grid-column:2}
 .sugg .cam .k{font-size:12px;color:var(--text-3);white-space:nowrap}
@@ -211,9 +257,11 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .tbars .col i+i{opacity:.85}
 .tbars .tempty{margin:auto;font-size:12px;color:var(--text-2)}
 .tl input{position:absolute;left:0;right:0;top:0;height:36px;width:100%;margin:0;opacity:0;cursor:pointer}
-.tl:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:3px;border-radius:var(--r-sm)}
+.tl:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:4px;border-radius:var(--r-sm)}
 .tticks{position:absolute;left:0;right:0;bottom:0;height:14px;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
 .tticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.tticks span:first-child{left:0!important;transform:none}
+.tticks span:last-child{left:100%!important;transform:translateX(-100%)}
 .timeline output{font-size:13px;font-weight:500;line-height:1.25;min-width:72px;padding-right:4px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .timeline output small{display:block;font-size:11.5px;font-weight:400;color:var(--text-3)}
 .timeline output.past{color:var(--warn)}
@@ -231,18 +279,62 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .status small{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-top:6px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
 .status small>span{display:inline-flex;align-items:center;gap:5px}
 .status small .ic{width:13px;height:13px;color:var(--text-3)}
-.x{flex:none;width:36px;height:36px;margin:-4px 0 0;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:rgba(255,255,255,.04);box-shadow:var(--hair)}
+.status-acts{display:flex;align-items:center;gap:6px;flex:none;margin:-4px 0 0}
+.favbtn,.x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:rgba(255,255,255,.04);box-shadow:var(--hair)}
+.favbtn .ic{width:16px;height:16px;vertical-align:0}
+.favbtn[aria-pressed="true"]{color:var(--warn);background:rgba(245,197,24,.12)}
+.favbtn[aria-pressed="true"] .ic{fill:var(--warn)}
+.favbtn:active{transform:scale(.94)}
+@media (hover:hover) and (pointer:fine){.favbtn:hover{background:rgba(255,255,255,.08);color:var(--text)}.favbtn[aria-pressed="true"]:hover{color:var(--warn);background:rgba(245,197,24,.18)}}
 .place{padding:14px 18px 10px}
 .place h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .place h2:focus{outline:0}
 .place p{font-size:13px;color:var(--text-2)}
 .shot{margin:0 18px;position:relative}
+.shotbtn{position:relative;display:block;width:100%;padding:0;border-radius:var(--r-lg);overflow:hidden;cursor:zoom-in;background:#000}
+.shotbtn::after{content:"";position:absolute;inset:0;border-radius:var(--r-lg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
 .shot img,.noimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000;border-radius:var(--r-lg)}
+.zoomhint{position:absolute;top:8px;right:8px;width:30px;height:30px;display:grid;place-items:center;border-radius:var(--r-md);
+  background:rgba(10,10,10,.62);color:var(--text);backdrop-filter:blur(6px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+  opacity:.72;transition:opacity .16s ease,transform .16s var(--ease-out),background-color .16s ease;pointer-events:none}
+.zoomhint .ic{width:14px;height:14px;vertical-align:0}
+@media (hover:hover) and (pointer:fine){.shotbtn:hover .zoomhint{opacity:1;background:rgba(10,10,10,.82);transform:scale(1.06)}}
+.shotbtn:active .zoomhint{transform:scale(.94)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.presets .pill{min-height:30px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;color:var(--text-2);
+  background:var(--surface-2);box-shadow:var(--hair);transition:background-color .12s ease,color .12s ease,transform .16s var(--ease-out)}
+.presets .pill[aria-pressed="true"]{background:var(--surface-3);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2),var(--lift)}
+.presets .pill:active{transform:scale(.96)}
+@media (hover:hover) and (pointer:fine){.presets .pill:hover{color:var(--text);background:var(--surface-3)}}
 /* kuva vaihtuu vasta kun uusi on valmis: ei himmennystä eikä siirtymää (ne näyttivät toistossa välkkymiseltä) */
-.shot::after{content:"";position:absolute;left:0;right:0;top:0;aspect-ratio:16/9;border-radius:var(--r-lg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
 .noimg{display:grid;place-items:center;background:var(--surface-2);color:var(--text-2);font-size:13px}
 .shot figcaption{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.45}
 .shot figcaption .ic{width:13px;height:13px;margin-right:5px;vertical-align:-2px}
+
+/* ---------- koko ruudun lightbox ---------- */
+.lightbox{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
+  background:rgba(6,6,8,.92);backdrop-filter:blur(10px);
+  padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+.lb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;max-width:1280px;width:100%;margin:0 auto 10px}
+.lb-meta{min-width:0}
+.lb-meta h2{font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+.lb-meta .lb-sub{font-size:13px;color:var(--text-2);margin-top:2px;font-variant-numeric:tabular-nums}
+.lb-meta .lb-info{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px;font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.lb-cond{display:inline-flex;align-items:center;gap:6px;color:var(--text);font-weight:500}
+.lb-btn{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:var(--r-lg);
+  color:var(--text);background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  transition:background-color .12s ease,transform .16s var(--ease-out)}
+.lb-btn .ic{width:18px;height:18px;vertical-align:0}
+.lb-btn:active{transform:scale(.94)}
+@media (hover:hover) and (pointer:fine){.lb-btn:hover{background:rgba(255,255,255,.16)}}
+.lb-stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;max-width:1280px;width:100%;margin:0 auto}
+.lb-stage img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:var(--r-lg);box-shadow:var(--elev-3);background:#000}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;background:rgba(10,10,10,.72);backdrop-filter:blur(6px)}
+.lb-nav:active{transform:translateY(-50%) scale(.94)}
+.lb-prev{left:8px}
+.lb-next{right:8px}
+.lb-foot{max-width:1280px;width:100%;margin:10px auto 0;display:flex;justify-content:center}
+.lb-foot .presets{margin-top:0;justify-content:center}
 /* lukemat: upotettu ryhmä, rivit hiusviivoin */
 .read{margin:14px 18px 0;padding:2px 12px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
 .read .kv{display:flex;justify-content:space-between;align-items:center;padding:9px 0;box-shadow:inset 0 -1px 0 var(--line)}
@@ -288,7 +380,8 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 
 /* ---------- MapLibre: samat pinnat ---------- */
 .maplibregl-ctrl-attrib{display:none}
-.maplibregl-ctrl-bottom-right{bottom:84px;right:6px}
+.maplibregl-ctrl-bottom-right{bottom:84px;right:6px;transition:right .32s var(--ease-out)}
+body:has(.panel.on) .maplibregl-ctrl-bottom-right{right:390px}
 .maplibregl-ctrl-group{border-radius:var(--r-lg)!important;background:var(--surface)!important;box-shadow:var(--elev-1)!important;overflow:hidden}
 .maplibregl-ctrl-group button{width:34px!important;height:34px!important}
 .maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
@@ -299,14 +392,12 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 @media (max-width:720px){
   .key{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:auto;max-height:52vh;max-height:52dvh;border-radius:var(--r-xl)}
   .fold{display:grid}
-  .key.collapsed .tabpanel{display:none}
-  .key.collapsed .tabs{box-shadow:none}
-  .key.collapsed .tabs button[aria-selected="true"]::after{opacity:0}
   .rows{display:grid;grid-template-columns:1fr 1fr;padding:4px}
+  .rows li.sep{grid-column:1/-1;margin-top:4px;padding-top:4px}
   .row{grid-template-columns:10px 1fr auto}
   .row .share{display:none}
   .row{padding:9px 10px;min-height:40px}
-  .sec.explain{display:none}
+  .explain{padding:6px 12px 0}
   .camfind{padding:8px 12px 2px}
   #p-route.has-route:not(.editing) .rform{display:none}
   #p-route.has-route:not(.editing) .rsum .editroute{display:inline-flex}
@@ -314,14 +405,24 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   #warnsec h2,#warnsec .sub,#warnsec .warn,#warnsec>.note{display:none}
   #warnsec{padding-top:2px;padding-bottom:10px}
   .warnsum{display:flex}
-  .timeline{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:calc(100% - 16px)}
+  .timeline{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:calc(100% - 16px);transition:transform .28s var(--ease-out),opacity .2s ease}
+  body:has(.panel.on) .timeline{opacity:0;pointer-events:none;transform:translate(-50%,calc(100% + 24px))}
   .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;max-height:72dvh;border-radius:18px 18px 0 0;
     padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .45s var(--ease-drawer);
     transform:translateY(105%);z-index:7;box-shadow:0 0 0 1px var(--line),var(--lift),0 -12px 40px rgba(0,0,0,.55)}
   .panel.on{transform:none;transition-duration:.45s}
   .panel::before{content:"";position:absolute;left:50%;top:7px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:rgba(255,255,255,.22);z-index:1}
   .status{padding-top:20px}
-  .x{width:40px;height:40px}
+  .favbtn,.x{width:44px;height:44px}
+  .favcams{padding:8px 12px 2px}
+  .favchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .favchips::-webkit-scrollbar{display:none}
+  .favchip{flex:none;min-height:40px;padding:6px 12px}
+  .saved-del{width:44px;height:44px}
+  .presets{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .presets::-webkit-scrollbar{display:none}
+  .presets .pill{flex:none;min-height:44px;min-width:44px;padding:0 14px;font-size:13px}
+  .lb-foot .presets{justify-content:flex-start}
   .panel .status{touch-action:none}  /* otsikkoalue on vetokahva: selain ei vieritä eikä päivitä sivua kesken vedon */
   .maplibregl-ctrl-bottom-right{display:none}
 }
@@ -337,7 +438,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   .key{max-height:calc(100dvh - 32px - 82px)}
   .panel{bottom:98px}
 }
-@media (prefers-reduced-motion:reduce){.timeline{transition:none}}
+@media (prefers-reduced-motion:reduce){.timeline,.maplibregl-ctrl-bottom-right{transition:none}}
 /* matalat näytöt: varoituslista tiivistyy riviksi, joka avaa listan sivupaneeliin */
 @media (min-width:721px) and (max-height:899px){
   #warnsec h2,#warnsec .sub,#warnsec .warn,#warnsec>.note{display:none}
@@ -385,7 +486,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 
 <section class="key loading" id="key">
   <header>
-    <div class="brand"><svg class="mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="lens"><circle cx="12" cy="13" r="5.2"/></clipPath></defs><path d="M8.2 6 9.6 3.6h4.8L15.8 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><rect x="1.8" y="6" width="20.4" height="14.6" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="5.2" fill="none" stroke="currentColor" stroke-width="1.7"/><g clip-path="url(#lens)" stroke-linecap="round"><path d="M9.3 18.5 11.3 8.2M14.7 18.5 12.7 8.2" stroke="currentColor" stroke-width="1.2"/><path d="M12 17.6v-1.8M12 14.3v-1.5M12 11.4v-1.2" stroke="var(--warn)" stroke-width="1.2"/></g><circle cx="18.6" cy="9" r="1" fill="var(--jaa)"/></svg><h1>Kelikamera</h1></div>
+    <div class="brand"><svg class="mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M6.5 2.5h11a4 4 0 0 1 4 4v11a4 4 0 0 1-4 4h-1.2L14 14.9a5.2 5.2 0 1 0-4 0l-2.3 6.6H6.5a4 4 0 0 1-4-4v-11a4 4 0 0 1 4-4Z" fill="currentColor"/><circle cx="12" cy="10.2" r="2.5" fill="var(--warn)"/></svg><h1>Kelikamera</h1></div>
     <div style="display:flex;align-items:center;gap:8px"><time id="updated">–</time>
       <button class="fold" id="fold" aria-label="Pienennä" aria-expanded="true" aria-controls="p-map p-worse p-roads"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button>
       <div class="lang" role="group" aria-label="Kieli / Language">
@@ -399,12 +500,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
   </div>
   <div class="tabpanel" id="p-map" role="tabpanel" aria-labelledby="tab-map">
     <div class="camfind field"><label for="camq" class="sr" data-t="camSearchLabel">Hae kameraa</label>
-      <div class="in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="camq" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="camres" aria-autocomplete="list" placeholder="Hae kameraa: nimi, tie tai kunta"></div>
+      <div class="in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="camq" autocomplete="off" enterkeyhint="search" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="camres" aria-autocomplete="list" placeholder="Hae kameraa: nimi, tie tai kunta"><button type="button" class="clr" id="camclr" hidden aria-label="Tyhjennä haku"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
       <ul class="sugg" id="camres" role="listbox" hidden></ul></div>
-    <div class="sec explain"><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></div>
+    <div class="favcams" id="favcams" hidden></div>
+    <details class="explain"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span data-t="explainSum">Keli tiesääasemalta (&lt; 5 km)</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></details>
     <ul class="rows" id="rows"></ul>
     <div class="sec" id="warnsec"></div>
-    <p class="credits"><span data-t="data"></span>: <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
+    <p class="credits"><span data-t="data"></span> <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
     <details class="privacy"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span data-t="privacySum"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><dl id="privacyList"></dl></details>
   </div>
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
@@ -436,16 +538,33 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 
 <aside class="panel" id="panel" inert></aside>
 
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-labelledby="lb-title" hidden>
+  <div class="lb-head">
+    <div class="lb-meta">
+      <h2 id="lb-title"></h2>
+      <p class="lb-sub" id="lb-sub"></p>
+      <div class="lb-info" id="lb-cond"></div>
+    </div>
+    <button type="button" class="lb-btn" id="lb-close" aria-label="Sulje"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="lb-stage">
+    <button type="button" class="lb-btn lb-nav lb-prev" id="lb-prev" hidden aria-label="Edellinen suunta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <img id="lb-img" alt="">
+    <button type="button" class="lb-btn lb-nav lb-next" id="lb-next" hidden aria-label="Seuraava suunta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+  <div class="lb-foot" id="lb-presets"></div>
+</div>
+
 
 <script defer src="vendor/maplibre/maplibre-gl.js"></script>
-<script defer src="js/i18n.js?v=f36f6d3ed5"></script>
-<script defer src="js/core.js?v=848af7ebbb"></script>
-<script defer src="js/map.js?v=7ada1df397"></script>
-<script defer src="js/sidebar.js?v=c3d5c91af8"></script>
-<script defer src="js/route.js?v=f272dc2122"></script>
-<script defer src="js/timeline.js?v=145783b757"></script>
-<script defer src="js/camera-image.js?v=c8ff63181b"></script>
-<script defer src="js/panel.js?v=af4512b229"></script>
+<script defer src="js/i18n.js?v=323ed1602c"></script>
+<script defer src="js/core.js?v=f7351b4d0b"></script>
+<script defer src="js/map.js?v=0e0d8f1953"></script>
+<script defer src="js/sidebar.js?v=115e7fe205"></script>
+<script defer src="js/route.js?v=399ce6f360"></script>
+<script defer src="js/timeline.js?v=6cc77d52ca"></script>
+<script defer src="js/camera-image.js?v=978fa2ed26"></script>
+<script defer src="js/panel.js?v=79e9f1e1df"></script>
 <script defer src="js/live.js?v=62a434e5d6"></script>
 <script defer src="js/main.js?v=658e5699ae"></script>
 </body>

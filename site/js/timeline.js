@@ -24,7 +24,7 @@ function renderTimeline(){
   out.classList.toggle("past",slot!==24);
   const p=document.getElementById("play"); p.innerHTML=playing?PAUSE:PLAY; p.setAttribute("aria-label",playing?T().pause:T().play);
 }
-function setSlot(i){ slot=i; renderTimeline(); renderLegend(); refreshMap(); refreshWarn(); if(road!=null)renderRoads(); if(ROUTE.geom)renderRoute(); if(current&&current.type==="cam")openCam(current.id,true); }
+function setSlot(i){ slot=i; renderTimeline(); renderFavCams(); renderLegend(); refreshMap(); refreshWarn(); if(road!=null)renderRoads(); if(ROUTE.geom)renderRoute(); if(current&&current.type==="cam")openCam(current.id,true); }
 document.getElementById("slider").oninput=e=>{stop();setSlot(+e.target.value)};
 function stop(){ if(playing){clearTimeout(playing);playing=null;renderTimeline();} }
 document.getElementById("play").onclick=()=>{

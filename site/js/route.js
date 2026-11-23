@@ -72,7 +72,8 @@ async function maybeRoute(){
     const scale=rt.distance/1000/cum[cum.length-1];   // reitin oma pituus tarkemmaksi
     cams.forEach(x=>x.at*=scale);
     const samples=g.filter((_,i)=>i%25===0);
-    const warns=WARN.map((w,i)=>({w,i})).filter(({w})=>w.polygons.some(ring=>samples.some(([x,y])=>inPoly(x,y,ring))));
+    const now=Date.now();
+    const warns=WARN.map((w,i)=>({w,i})).filter(({w})=>new Date(w.expires)>now&&w.polygons.some(ring=>samples.some(([x,y])=>inPoly(x,y,ring))));
     ROUTE={...ROUTE,geom:g,km:rt.distance/1000,h:rt.duration/3600,cams,ids:new Set(cams.map(x=>x.c.id)),warns};
     try{if(ROUTE.from.name!==T().myLoc) localStorage.setItem("route",JSON.stringify({from:ROUTE.from,to:ROUTE.to}))}catch(e){}
     rstatus(""); renderRoute(); setRouteVisible(true); fitRoute();
@@ -89,11 +90,22 @@ function setRouteVisible(on){
 function renderRoute(){
   const el=document.getElementById("rresult"), L=T();
   document.getElementById("rclear").hidden=!ROUTE.geom;
-  if(!ROUTE.geom){ document.getElementById("p-route").classList.remove("has-route","editing"); if(worseScope==="route") renderWorse(worsening()); let last=null; try{last=JSON.parse(localStorage.getItem("route")||"null")}catch(e){}
-    el.innerHTML=(last&&last.from&&last.to?`<button class="last" id="lastroute">${ic("history")}<span>${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></span></button>`:"")+
-      `<p class="blank credits" style="border:0">${L.routeSrc}</p>`;
-    const lb=document.getElementById("lastroute"); if(lb) lb.onclick=()=>{ROUTE.from=last.from;ROUTE.to=last.to;
-      document.getElementById("from").value=last.from.name; document.getElementById("to").value=last.to.name; maybeRoute();};
+  if(!ROUTE.geom){ document.getElementById("p-route").classList.remove("has-route","editing"); if(worseScope==="route") renderWorse(worsening());
+    let last=null; try{last=JSON.parse(localStorage.getItem("route")||"null")}catch(e){}
+    const showLast=last&&last.from&&last.to&&!isSavedRoute(last.from,last.to);
+    const savedHtml=SAVED_ROUTES.length?`<div class="saved-sec"><div class="saved-hd">${ic("star")}<span>${L.savedRoutes}</span></div>
+      <ul class="saved-list">${SAVED_ROUTES.map((r,i)=>`<li class="saved-row">
+        <button type="button" class="saved-pick" data-ri="${i}">${ic("star")}<span>${esc(r.from.name)} → ${esc(r.to.name)}</span></button>
+        <button type="button" class="saved-del" data-di="${i}" aria-label="${esc(L.removeRoute)}" title="${esc(L.removeRoute)}">${X}</button>
+      </li>`).join("")}</ul></div>`:"";
+    el.innerHTML=savedHtml
+      +(showLast?`<button class="last" id="lastroute">${ic("history")}<span>${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></span></button>`:"")
+      +`<p class="blank credits" style="border:0">${L.routeSrc}</p>`;
+    const loadR=r=>{ROUTE.from=r.from;ROUTE.to=r.to;
+      document.getElementById("from").value=r.from.name; document.getElementById("to").value=r.to.name; maybeRoute();};
+    el.querySelectorAll(".saved-pick").forEach(b=>b.onclick=()=>loadR(SAVED_ROUTES[+b.dataset.ri]));
+    el.querySelectorAll(".saved-del").forEach(b=>b.onclick=()=>{removeSavedRoute(+b.dataset.di); renderRoute();});
+    const lb=document.getElementById("lastroute"); if(lb) lb.onclick=()=>loadR(last);
     return; }
   const cams=ROUTE.cams, meas=cams.filter(x=>clsAt(x.c)!=="ei mittausta");
   const n=Object.fromEntries(ORDER.map(k=>[k,0])); meas.forEach(x=>n[clsAt(x.c)]++);
@@ -104,20 +116,26 @@ function renderRoute(){
   // pisin mittaamaton väli (km) reitin alusta loppuun
   const marks=[0,...meas.map(x=>x.at),ROUTE.km]; let gap=0,ga=0,gb=0;
   for(let i=1;i<marks.length;i++) if(marks[i]-marks[i-1]>gap){gap=marks[i]-marks[i-1];ga=marks[i-1];gb=marks[i]}
-  const soon=Date.now()+12*36e5, act=ROUTE.warns.filter(x=>new Date(x.w.onset)<=soon&&new Date(x.w.expires)>Date.now());
+  const now=Date.now(), rwarns=(ROUTE.warns||[]).filter(x=>new Date(x.w.expires)>now);
+  const soon=now+12*36e5, act=rwarns.filter(x=>new Date(x.w.onset)<=soon);
   const h=Math.floor(ROUTE.h), m=Math.round((ROUTE.h-h)*60);
   const pct=cams.length?Math.round((cams.length-meas.length)/cams.length*100):0;
   const kmf=v=>Math.round(v).toLocaleString(L.locale);
+  const saved=isSavedRoute(ROUTE.from,ROUTE.to);
   el.innerHTML=`<div class="rsum">
-      <div class="trip"><span>${esc(ROUTE.from.name)} → ${esc(ROUTE.to.name)}</span><button class="btn ghost editroute" id="editroute" type="button">${L.editRoute}</button></div>
+      <div class="trip"><span>${esc(ROUTE.from.name)} → ${esc(ROUTE.to.name)}</span>
+        <div class="trip-acts">
+          <button class="btn ghost saveroute" id="saveroute" type="button" aria-pressed="${saved}">${ic("star")}<span>${saved?L.savedRoute:L.saveRoute}</span></button>
+          <button class="btn ghost editroute" id="editroute" type="button">${L.editRoute}</button>
+        </div></div>
       <div class="meta num">${kmf(ROUTE.km)} km · ${L.hm(h,m)}</div>
       <div class="mix" aria-hidden="true">${ORDER.slice(0,-1).reverse().map(k=>`<i style="width:${meas.length?n[k]/meas.length*100:0}%;background:${COLORS[k]}"></i>`).join("")}</div>
       <div class="meta">${L.onRoute(cams.length,meas.length)}</div>
       <ul>
         ${slip.length?`<li class="alert" style="--c:${COLORS[worstK]}"><span class="dot"></span><span>${L.slipN(slipTxt,kmf(slip[0].at),esc(nameOf(slip[0].c)))}</span></li>`
           :(meas.length?`<li class="ok" style="--c:${COLORS[worstK]}"><span class="dot"></span><span>${L.noSlip}${wet?L.wetN(wet):""}</span></li>`:"")}
-        ${ROUTE.warns.length?(()=>{const first=[...ROUTE.warns].sort((a,b)=>new Date(a.w.onset)-new Date(b.w.onset))[0];
-          return `<li class="warnl">${ic("tri")}<span>${act.length?L.warnOnRoute(act.length):L.warnLater(ROUTE.warns.length,fmtTime(first.w.onset))}
+        ${rwarns.length?(()=>{const first=[...rwarns].sort((a,b)=>new Date(a.w.onset)-new Date(b.w.onset))[0];
+          return `<li class="warnl">${ic("tri")}<span>${act.length?L.warnOnRoute(act.length):L.warnLater(rwarns.length,fmtTime(first.w.onset))}
           <br><button class="btn lnk" id="rwarns">${L.showWarnings}${ic("list")}</button></span></li>`})():""}
         ${pct?`<li class="gray">${ic("dashed")}<span>${L.unmeasured(pct,Math.round(gap/10)*10,kmf(ga),kmf(gb))}</span></li>`:""}
       </ul>
@@ -130,9 +148,10 @@ function renderRoute(){
     <p class="credits">${L.routeSrc}</p>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const c=byId[b.dataset.id]; if(isMobile()) setCollapsed(true);
     map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),9),offset:isMobile()?[0,-innerHeight*.28]:[-180,0]}); openCam(c.id)});
-  const rw=document.getElementById("rwarns"); if(rw) rw.onclick=()=>openWarnList(ROUTE.warns.map(x=>x.i));
+  const rw=document.getElementById("rwarns"); if(rw) rw.onclick=()=>openWarnList(rwarns.map(x=>x.i));
   // puhelimessa lomake piiloon, kun reitti on löytynyt: yhteenveto mahtuu korttiin
   const pr=document.getElementById("p-route"); pr.classList.add("has-route"); pr.classList.remove("editing");
   renderWorse(worsening());
+  document.getElementById("saveroute").onclick=()=>{toggleSavedRoute(ROUTE.from,ROUTE.to); renderRoute();};
   document.getElementById("editroute").onclick=()=>{pr.classList.add("editing"); document.getElementById("from").focus();};
 }

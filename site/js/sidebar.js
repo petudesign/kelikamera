@@ -5,13 +5,27 @@ function renderData(){
   const at=DATA.live||DATA.run, u=document.getElementById("updated"), today=new Date(at).toDateString()===new Date().toDateString();
   u.textContent=isMobile()&&today?fmtClock(at):fmt(at,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=at;
   const worse=worsening(), bd=document.querySelector("#tab-worse .badge"); bd.hidden=!worse.length; bd.textContent=worse.length||"";
-  renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+  renderFavCams(); renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+}
+function renderFavCams(){
+  const el=document.getElementById("favcams"); if(!el) return;
+  const list=FAV_CAMS.map(id=>byId[id]).filter(Boolean);
+  if(!list.length){ el.hidden=true; el.innerHTML=""; return; }
+  el.hidden=false;
+  el.innerHTML=`<div class="favhead">${ic("star")}<span>${T().favCamsLabel}</span></div>
+    <div class="favchips" role="list">${list.map(c=>{
+      const k=clsAt(c), t=c.roadT!=null?c.roadT:c.airT;
+      return `<button type="button" class="favchip" role="listitem" data-id="${c.id}">
+        <span class="sw" style="background:${COLORS[k]}"></span><span class="fn">${esc(nameOf(c))}</span>
+        ${t!=null?`<span class="ft num">${num(t,"\u00a0°C")}</span>`:""}</button>`;
+    }).join("")}</div>`;
+  el.querySelectorAll(".favchip").forEach(b=>b.onclick=()=>{ if(isMobile()) setCollapsed(true); openCam(b.dataset.id); });
 }
 function renderAll(){
   document.documentElement.lang=LANG; document.title=T().title;
   document.getElementById("map").setAttribute("aria-label",T().mapLabel);
   document.getElementById("slider").setAttribute("aria-label",LANG==="en"?"Timeline, last 24 hours":"Aikajana, viimeiset 24 tuntia");
-  if(!foldBtn.getAttribute("aria-label")||!keyEl.classList.contains("collapsed")) foldBtn.setAttribute("aria-label",keyEl.classList.contains("collapsed")?T().expand:T().collapse);
+  foldBtn.setAttribute("aria-label",keyEl.classList.contains("collapsed")?T().expand:T().collapse);
   document.querySelectorAll("[data-t]").forEach(el=>el.textContent=T()[el.dataset.t]);
   document.getElementById("privacyList").innerHTML=T().privacyItems.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
   document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
@@ -19,6 +33,7 @@ function renderAll(){
   const setTab=(id,txt)=>{const sp=document.querySelector(`#${id}>span`); if(sp.textContent!==txt) sp.textContent=txt;};
   setTab("tab-map",T().tabMap); setTab("tab-route",T().tabRoute);
   document.getElementById("camq").placeholder=T().camSearchPh;
+  document.getElementById("camclr").setAttribute("aria-label",T().clearSearch);
   document.getElementById("from").placeholder=T().placeholderFrom; document.getElementById("to").placeholder=T().placeholderTo;
   document.getElementById("locate").setAttribute("aria-label",T().myLoc); document.getElementById("locate").title=T().myLoc;
   setTab("tab-worse",T().tabWorse); setTab("tab-roads",T().tabRoads);
@@ -32,32 +47,39 @@ function counts(){
   return n;
 }
 function renderLegend(){
-  const n=counts(), total=Object.values(n).reduce((a,b)=>a+b,0)||1;
+  const n=counts(), maxMeas=Math.max(1,...ORDER.filter(k=>k!=="ei mittausta").map(k=>n[k]));
   const el=document.getElementById("rows");
-  el.innerHTML=ORDER.map(k=>`<li><button class="row" aria-pressed="${!hidden.has(k)}" data-k="${k}" style="color:${COLORS[k]}">
-    <span class="sw" style="background:${COLORS[k]}"></span><span class="lbl" style="color:var(--text)">${T().cls[k]}</span>
-    <span class="share" aria-hidden="true"><i style="width:${(n[k]/total*100).toFixed(1)}%"></i></span><span class="n num">${n[k]}</span></button></li>`).join("");
+  el.innerHTML=ORDER.map(k=>{
+    const unm=k==="ei mittausta", pct=unm||!n[k]?0:(n[k]/maxMeas*100);
+    return `<li${unm?' class="sep"':""}><button class="row" aria-pressed="${!hidden.has(k)}" data-k="${k}" style="color:${COLORS[k]}">
+      <span class="sw" style="background:${COLORS[k]}"></span><span class="lbl" style="color:var(--text)">${T().cls[k]}</span>
+      <span class="share" aria-hidden="true">${pct?`<i style="width:${pct.toFixed(1)}%"></i>`:""}</span><span class="n num">${n[k]}</span></button></li>`;
+  }).join("");
   el.querySelectorAll(".row").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k; hidden.has(k)?hidden.delete(k):hidden.add(k);
     b.setAttribute("aria-pressed",String(!hidden.has(k))); applyFilter();
   });
 }
 
-function warnItems(only){
+function currentWarns(only){
   const now=Date.now();
-  return WARN.length?WARN.map((w,i)=>{if(only&&!only.includes(i))return "";const on=new Date(w.onset)<=now;
+  return WARN.map((w,i)=>({w,i})).filter(({w,i})=>(!only||only.includes(i))&&new Date(w.expires)>now);
+}
+function warnItems(only){
+  const now=Date.now(), list=currentWarns(only);
+  return list.length?list.map(({w,i})=>{const on=new Date(w.onset)<=now;
      return `<button class="warn${on?" now":""}" data-i="${i}"><b data-st="${on?T().inForce:T().upcoming}">${ic("tri")}${esc(areaOf(w))}</b>
        <span class="hz">${esc(hazardOf(w))}</span><span class="num">${fmtTime(w.onset)} – ${fmtTime(w.expires)}</span></button>`}).join("")
      :`<p class="note">${T().noWarnings}</p>`;
 }
 function renderWarnings(){
-  const el=document.getElementById("warnsec");
-  el.innerHTML=`<h2><span>${T().warnings}</span><span class="num">${WARN.length}</span></h2><p class="note sub">${T().warnSub}</p>`+
+  const el=document.getElementById("warnsec"), n=currentWarns().length;
+  el.innerHTML=`<h2><span>${T().warnings}</span><span class="num">${n}</span></h2><p class="note sub">${T().warnSub}</p>`+
    warnItems()+
    "";
   el.classList.toggle("open",warnOpen);
   el.insertAdjacentHTML("afterbegin",`<button class="warnsum" id="warnsum" aria-expanded="${warnOpen}">${ic("tri","tri")}<b>${T().warnings}</b>
-    <span class="num">${WARN.length}</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button>`);
+    <span class="num">${n}</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button>`);
   el.querySelectorAll(".warn").forEach(b=>b.onclick=()=>openWarn(+b.dataset.i));
   document.getElementById("warnsum").onclick=()=>{
     if(isMobile()) return openWarnList();          // puhelimessa lista alhaalta nousevaan paneeliin
@@ -140,7 +162,7 @@ function setCollapsed(c){ keyEl.classList.toggle("collapsed",c); foldBtn.setAttr
   foldBtn.setAttribute("aria-label",c?T().expand:T().collapse);
   if(!map.loaded()) return; if(routeOn) fitRoute(); else if(road==null) lockToFinland(); }
 foldBtn.onclick=()=>setCollapsed(!keyEl.classList.contains("collapsed"));
-if(matchMedia("(max-width:720px)").matches) keyEl.classList.add("collapsed");
+if(matchMedia("(max-width:720px)").matches){ keyEl.classList.add("collapsed"); foldBtn.setAttribute("aria-expanded","false"); }
 // Välilehdet: nuolinäppäimet ja kiertävä tabindex (ARIA tabs -malli).
 const TABS=[...document.querySelectorAll('[role="tab"]')];
 const syncTabIdx=()=>TABS.forEach(x=>x.tabIndex=x.getAttribute("aria-selected")==="true"?0:-1);
@@ -148,6 +170,8 @@ TABS.forEach((t,i)=>t.addEventListener("keydown",e=>{
   const j={ArrowRight:i+1,ArrowLeft:i-1,Home:0,End:TABS.length-1}[e.key]; if(j==null) return;
   e.preventDefault(); const n=TABS[(j+TABS.length)%TABS.length]; n.focus(); n.click();}));
 document.querySelectorAll('[role="tab"]').forEach(t=>t.onclick=()=>{
+  const active=t.getAttribute("aria-selected")==="true";
+  if(active&&!keyEl.classList.contains("collapsed")){ setCollapsed(true); return; }
   if(keyEl.classList.contains("collapsed")) setCollapsed(false);
   document.querySelectorAll('[role="tab"]').forEach(x=>{const on=x===t;x.setAttribute("aria-selected",on);
     document.getElementById(x.getAttribute("aria-controls")).hidden=!on});
@@ -164,9 +188,10 @@ document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{
 // Kamerahaku: ainoa tapa päästä kameraan näppäimistöllä ja ruudunlukijalla (karttapisteet eivät ole fokusoitavia).
 const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 (function setupCamSearch(){
-  const inp=document.getElementById("camq"), ul=document.getElementById("camres"); let items=[], sel=-1;
+  const inp=document.getElementById("camq"), ul=document.getElementById("camres"), clr=document.getElementById("camclr"); let items=[], sel=-1;
   const close=()=>{ul.hidden=true;inp.setAttribute("aria-expanded","false");sel=-1};
-  const pick=i=>{const c=items[i]; if(!c) return; inp.value=""; close(); if(isMobile()) setCollapsed(true); openCam(c.id);};
+  const syncClr=()=>{clr.hidden=!inp.value};
+  const pick=i=>{const c=items[i]; if(!c) return; inp.value=""; syncClr(); close(); if(isMobile()) setCollapsed(true); openCam(c.id);};
   const draw=()=>{
     ul.innerHTML=items.length?items.map((c,i)=>{const k=clsAt(c);return `<li><button type="button" class="cam" role="option" id="camopt-${i}" aria-selected="${i===sel}" data-i="${i}">
       <span class="sw" style="background:${COLORS[k]}"></span><span>${esc(nameOf(c))}</span><span class="k">${T().cls[k]}</span>${c.mun?`<small>${esc(c.mun)}</small>`:""}</button></li>`}).join("")
@@ -175,7 +200,9 @@ const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,
     if(sel>=0) inp.setAttribute("aria-activedescendant",`camopt-${sel}`); else inp.removeAttribute("aria-activedescendant");
     ul.querySelectorAll("button").forEach(b=>b.onmousedown=e=>{e.preventDefault();pick(+b.dataset.i)});
   };
+  clr.onclick=()=>{inp.value="";syncClr();items=[];close();inp.focus()};
   inp.addEventListener("input",()=>{
+    syncClr();
     const q=norm(inp.value.trim()); if(q.length<2){items=[];close();return}
     const words=q.split(/\s+/);
     items=DATA.cameras.map(c=>{const hay=norm(`${nameOf(c)} ${c.name} ${c.mun||""} ${c.road!=null?"tie road vt kt "+c.road:""}`);
@@ -191,3 +218,16 @@ const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,
     else if(e.key==="Escape"){close()}});
   inp.addEventListener("blur",()=>setTimeout(close,150));
 })();
+
+// Haitarit: Tietosuoja skrollautuu näkyviin avattaessa; Esc sulkee avoimet haitarit.
+document.querySelector(".privacy").addEventListener("toggle",e=>{
+  if(e.target.open) e.target.scrollIntoView({behavior:prefersReduced()?"auto":"smooth",block:"end"});
+});
+addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  document.querySelectorAll(".key details[open]").forEach(d=>{
+    const hadFocus=d.contains(document.activeElement);
+    d.open=false;
+    if(hadFocus) d.querySelector("summary").focus({preventScroll:true});
+  });
+});
