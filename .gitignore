@@ -5,3 +5,8 @@ __pycache__/
 .DS_Store
 site/data/latest.json
 site/data/warnings.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
