@@ -39,8 +39,10 @@ class Chrome:
 
     def __enter__(self) -> "Chrome":
         port = _free_port()
+        self._profile_dir = tempfile.mkdtemp(prefix="kelikamera-chrome-")
+        self.ws = None
         self.proc = subprocess.Popen(
-            [CHROME, "--headless=new", f"--remote-debugging-port={port}", f"--user-data-dir={tempfile.mkdtemp()}",
+            [CHROME, "--headless=new", f"--remote-debugging-port={port}", f"--user-data-dir={self._profile_dir}",
              "--hide-scrollbars", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
              *(["--no-sandbox"] if os.environ.get("CI") else []),  # GitHubin Ubuntu-koneella ei hiekkalaatikkoa
              "about:blank"],
@@ -54,7 +56,7 @@ class Chrome:
             except Exception:
                 time.sleep(0.2)
         else:
-            self.proc.terminate()
+            self.__exit__(None, None, None)
             raise RuntimeError(f"Chrome ei käynnistynyt ({CHROME or 'ei löytynyt; aseta CHROME'})")
         self.send("Page.enable")
         self.send("Page.addScriptToEvaluateOnNewDocument", source=CAPTURE_ERRORS)
@@ -62,7 +64,19 @@ class Chrome:
         return self
 
     def __exit__(self, *exc) -> None:
-        self.proc.terminate()
+        if getattr(self, "ws", None) is not None:
+            try:
+                self.ws.close()
+            except Exception:
+                pass
+        if getattr(self, "proc", None) is not None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+        if getattr(self, "_profile_dir", None):
+            shutil.rmtree(self._profile_dir, ignore_errors=True)
 
     def send(self, method: str, **params) -> dict:
         self._id += 1

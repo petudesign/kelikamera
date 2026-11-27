@@ -7,8 +7,8 @@ kartta-kapea.png (320×640). Valinnainen JS ajetaan ennen kuvaa (esim. paneelin 
 """
 from __future__ import annotations
 
+import argparse
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -35,5 +35,10 @@ def main(url: str, out_dir: Path, setup_js: str | None = None, prefix: str = "")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], Path(sys.argv[2]), sys.argv[3] if len(sys.argv) > 3 else None,
-         sys.argv[4] if len(sys.argv) > 4 else "")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("url")
+    ap.add_argument("out_dir", type=Path)
+    ap.add_argument("setup_js", nargs="?", default=None)
+    ap.add_argument("prefix", nargs="?", default="")
+    args = ap.parse_args()
+    main(args.url, args.out_dir, args.setup_js, args.prefix)

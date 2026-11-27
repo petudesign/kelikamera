@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import copy
 import json
-import random
 import shutil
 from pathlib import Path
 
@@ -55,7 +54,6 @@ def recount(data: dict) -> None:
 def main() -> None:
     base = json.loads((SITE / "data" / "latest.json").read_text())
     warn = json.loads((SITE / "data" / "warnings.json").read_text())
-    rnd = random.Random(1)
 
     # pitkät nimet, puuttuvat arvot, satoja liukastuvia, 30 varoitusta
     d = copy.deepcopy(base)

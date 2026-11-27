@@ -1,10 +1,16 @@
 .venv/
+.pytest_cache/
 out/
 cache/
 __pycache__/
 .DS_Store
 site/data/latest.json
 site/data/warnings.json
+node_modules/
+video/.whisper/
+video/out/
+.claude/
+.design-bridge/
 
 # Environment variables
 .env

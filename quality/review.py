@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import http.server
 import json
+import os
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,6 +20,8 @@ ANSWERS = HERE / "answers.json"
 BAD = HERE / "bad_images.json"
 IMAGES = ROOT / "out" / "review" / "images"
 FONTS = ROOT / "site" / "vendor" / "geist"
+MAX_BODY_BYTES = 1024 * 1024
+_WRITE_LOCK = threading.Lock()
 
 
 def load(path: Path) -> dict:
@@ -25,7 +29,9 @@ def load(path: Path) -> dict:
 
 
 def save(path: Path, data: dict) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True))
+    os.replace(tmp, path)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -56,20 +62,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send(b"", "text/plain", 404)
 
     def do_POST(self) -> None:
-        msg = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            return self.send(b"invalid content-length", "text/plain", 400)
+        if length < 0 or length > MAX_BODY_BYTES:
+            return self.send(b"payload too large", "text/plain", 413)
+        try:
+            msg = json.loads(self.rfile.read(length))
+        except (ValueError, UnicodeDecodeError):
+            return self.send(b"invalid json", "text/plain", 400)
+        if not isinstance(msg, dict) or not isinstance(msg.get("id"), str):
+            return self.send(b"missing id", "text/plain", 400)
         if self.path == "/answer":
             path, value = ANSWERS, msg.get("answer")
         elif self.path == "/flag":
             path, value = BAD, True if msg.get("bad") else None
         else:
             return self.send(b"", "text/plain", 404)
-        data = load(path)
-        if value is None:
-            data.pop(msg["id"], None)
-        else:
-            data[msg["id"]] = value
-        save(path, data)
-        self.send(json.dumps({"done": len(data)}).encode(), "application/json")
+        with _WRITE_LOCK:
+            data = load(path)
+            if value is None:
+                data.pop(msg["id"], None)
+            else:
+                data[msg["id"]] = value
+            save(path, data)
+            done = len(data)
+        self.send(json.dumps({"done": done}).encode(), "application/json")
 
 
 if __name__ == "__main__":

@@ -1,2 +1,2 @@
-websocket-client>=1.8
-pytest>=8
+websocket-client>=1.8,<2
+pytest>=8,<10
