@@ -28,29 +28,29 @@ tarkkuudella kameroilla, joita malli ei ole koskaan nähnyt."*
 
 Kartta ennen tekoälyä: kuusi kymmenestä kamerasta ilman kelitietoa.
 
-![Kartta, työpöytä](docs/progress/2026-11-09/kartta-desktop.png)
+![Kartta, työpöytä](docs/progress/2026-11-09/kartta-desktop.jpg)
 
-<img src="docs/progress/2026-11-09/kartta-mobiili.png" width="300" alt="Kartta, mobiili">
+<img src="docs/progress/2026-11-09/kartta-mobiili.jpg" width="300" alt="Kartta, mobiili">
 
 Huom: marraskuun alku, joten talviluokkia ei juuri ole (jää/kuura 1, luminen 3 kameraa).
 Ajo 2026-11-09 klo 16:02 UTC.
 
 **Saman päivän UI-kierros (v2):** paneelit uusittiin mittaristomaisiksi (ks. DECISIONS.md). Luvut eivät muuttuneet.
 
-![UI v2, jäinen kamera auki](docs/progress/2026-11-09/ui-v2-desktop-jaa.png)
+![UI v2, jäinen kamera auki](docs/progress/2026-11-09/ui-v2-desktop-jaa.jpg)
 
-<img src="docs/progress/2026-11-09/ui-v2-mobiili-ei-mittausta.png" width="300" alt="UI v2, mobiili, kamera ilman mittausta">
+<img src="docs/progress/2026-11-09/ui-v2-mobiili-ei-mittausta.jpg" width="300" alt="UI v2, mobiili, kamera ilman mittausta">
 
 
 **Saman päivän ominaisuuskierros (v3):** aikajana, Liukastumassa-lista, tiekohtainen näkymä, viralliset
 liikennesäävaroitukset ja englanti. Luvut eivät muuttuneet (malli ei vielä käytössä).
 
-![Liukastumassa](docs/progress/2026-11-09/ui-v3-liukastumassa.png)
-![Tie 6](docs/progress/2026-11-09/ui-v3-tie-6.png)
-![Englanti ja aikajana klo 9](docs/progress/2026-11-09/ui-v3-en-aikajana.png)
-![Liikennesäävaroitus](docs/progress/2026-11-09/ui-v3-varoitus.png)
+![Liukastumassa](docs/progress/2026-11-09/ui-v3-liukastumassa.jpg)
+![Tie 6](docs/progress/2026-11-09/ui-v3-tie-6.jpg)
+![Englanti ja aikajana klo 9](docs/progress/2026-11-09/ui-v3-en-aikajana.jpg)
+![Liikennesäävaroitus](docs/progress/2026-11-09/ui-v3-varoitus.jpg)
 
-<img src="docs/progress/2026-11-09/ui-v3-mobiili-liukastumassa.png" width="300" alt="Mobiili, Liukastumassa">
+<img src="docs/progress/2026-11-09/ui-v3-mobiili-liukastumassa.jpg" width="300" alt="Mobiili, Liukastumassa">
 
 ### 2026-11-11 · UI-kierrokset ja paneelien uusi ilme (v4)
 
@@ -59,9 +59,9 @@ komponenttijärjestelmä paneeleille. Luvut eivät muuttuneet (malli ei vielä k
 
 | Ennen (v3) | Jälkeen (v4) |
 |---|---|
-| ![](docs/progress/2026-11-11/ui-v3-ennen-desktop.png) | ![](docs/progress/2026-11-11/ui-v4-desktop.png) |
+| ![](docs/progress/2026-11-11/ui-v3-ennen-desktop.jpg) | ![](docs/progress/2026-11-11/ui-v4-desktop.jpg) |
 
-<img src="docs/progress/2026-11-11/ui-v3-ennen-mobiili.png" width="260" alt="Mobiili ennen"> <img src="docs/progress/2026-11-11/ui-v4-mobiili.png" width="260" alt="Mobiili jälkeen">
+<img src="docs/progress/2026-11-11/ui-v3-ennen-mobiili.jpg" width="260" alt="Mobiili ennen"> <img src="docs/progress/2026-11-11/ui-v4-mobiili.jpg" width="260" alt="Mobiili jälkeen">
 
 ### 2026-11-17 · Ohut kerros omaksi luokakseen kartalla
 
