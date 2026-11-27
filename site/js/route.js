@@ -6,26 +6,20 @@ const placeLabel=p=>{const n=p.name||[p.street,p.housenumber].filter(Boolean).jo
   const sub=[p.name&&p.street?[p.street,p.housenumber].filter(Boolean).join(" "):null,p.city||p.county||p.state].filter(Boolean).join(", ");
   return {n:n||sub,sub:n?sub:""}};
 function setupField(id){
-  const inp=document.getElementById(id), ul=document.getElementById("sugg-"+id); let timer, items=[], sel=-1, ctrl;
-  const close=()=>{ul.hidden=true;inp.setAttribute("aria-expanded","false");sel=-1};
-  const pick=i=>{const f=items[i]; if(!f)return; const L=placeLabel(f.properties);
-    inp.value=L.n+(L.sub?", "+L.sub:""); ROUTE[id]={lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],name:L.n}; close(); maybeRoute();};
-  const draw=()=>{ul.innerHTML=items.map((f,i)=>{const L=placeLabel(f.properties);
-      return `<li><button type="button" role="option" aria-selected="${i===sel}" data-i="${i}">${esc(L.n)}${L.sub?`<small>${esc(L.sub)}</small>`:""}</button></li>`}).join("");
-    ul.hidden=!items.length; inp.setAttribute("aria-expanded",String(!!items.length));
-    ul.querySelectorAll("button").forEach(b=>b.onmousedown=e=>{e.preventDefault();pick(+b.dataset.i)});};
-  inp.addEventListener("input",()=>{ROUTE[id]=null; clearTimeout(timer); const q=inp.value.trim();
-    if(q.length<3){items=[];draw();return}
-    timer=setTimeout(async()=>{ctrl&&ctrl.abort(); ctrl=new AbortController();
-      try{const r=await fetch(`${PHOTON}?q=${encodeURIComponent(q)}&limit=6&bbox=${FI_BBOX}${LANG==="en"?"&lang=en":""}`,{signal:ctrl.signal});
-        items=((await r.json()).features||[]).filter(f=>(f.properties.countrycode||"FI")==="FI"); sel=-1; draw();}catch(e){}
-    },350)});
-  inp.addEventListener("keydown",e=>{
-    if(e.key==="ArrowDown"&&items.length){sel=(sel+1)%items.length;draw();e.preventDefault()}
-    else if(e.key==="ArrowUp"&&items.length){sel=(sel-1+items.length)%items.length;draw();e.preventDefault()}
-    else if(e.key==="Enter"&&items.length){pick(sel<0?0:sel);e.preventDefault()}
-    else if(e.key==="Escape"){close()}});
-  inp.addEventListener("blur",()=>setTimeout(close,150));
+  const inp=document.getElementById(id), ul=document.getElementById("sugg-"+id);
+  createCombobox({
+    input:inp, list:ul, minLen:3, debounce:350,
+    onInput:()=>{ROUTE[id]=null;},
+    query:async(q,signal)=>{
+      const r=await fetch(`${PHOTON}?q=${encodeURIComponent(q)}&limit=6&bbox=${FI_BBOX}${LANG==="en"?"&lang=en":""}`,{signal});
+      if(!r.ok) return [];
+      return ((await r.json()).features||[]).filter(f=>(f.properties.countrycode||"FI")==="FI");
+    },
+    renderItem:(f,i,sel)=>{const L=placeLabel(f.properties);
+      return `<li><button type="button" role="option" aria-selected="${sel}" data-i="${i}">${esc(L.n)}${L.sub?`<small>${esc(L.sub)}</small>`:""}</button></li>`;},
+    onPick:f=>{const L=placeLabel(f.properties);
+      inp.value=L.n+(L.sub?", "+L.sub:""); ROUTE[id]={lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],name:L.n}; maybeRoute();}
+  });
 }
 setupField("from"); setupField("to");
 
@@ -58,6 +52,7 @@ async function maybeRoute(){
   rstatus(T().searching);
   try{
     const r=await fetch(`${OSRM}${ROUTE.from.lon},${ROUTE.from.lat};${ROUTE.to.lon},${ROUTE.to.lat}?overview=full&geometries=geojson&steps=true`);
+    if(!r.ok) throw 0;
     const d=await r.json(); if(d.code!=="Ok"||!d.routes.length) throw 0;
     const rt=d.routes[0], g=rt.geometry.coordinates, cum=[0];
     for(let i=1;i<g.length;i++){const la=(g[i][1]+g[i-1][1])/2;
@@ -69,7 +64,7 @@ async function maybeRoute(){
       if(refs.size&&c.road!=null&&!refs.has(c.road)) continue;
       const [dist,at]=project(g,cum,c.lon,c.lat); if(dist<=NEAR_KM) cams.push({c,at});}
     cams.sort((a,b)=>a.at-b.at);
-    const scale=rt.distance/1000/cum[cum.length-1];   // reitin oma pituus tarkemmaksi
+    const totalCum=cum[cum.length-1], scale=totalCum>0?rt.distance/1000/totalCum:1;   // reitin oma pituus tarkemmaksi
     cams.forEach(x=>x.at*=scale);
     const samples=g.filter((_,i)=>i%25===0);
     const now=Date.now();
@@ -143,7 +138,7 @@ function renderRoute(){
     </div>
     <div class="rstrip"><div class="bars" aria-hidden="true">${cams.map(x=>`<i style="left:${(x.at/ROUTE.km*100).toFixed(2)}%;background:${COLORS[clsAt(x.c)]}"></i>`).join("")}</div>
       <div class="ends num"><span>0 km</span><span>${kmf(ROUTE.km)} km</span></div></div>
-    <ul class="list">${cams.map(x=>{const k=clsAt(x.c);return `<li><button class="item" data-id="${x.c.id}"><span class="sw" style="background:${COLORS[k]}"></span>
+    <ul class="list">${cams.map(x=>{const k=clsAt(x.c);return `<li><button class="item" data-id="${esc(x.c.id)}"><span class="sw" style="background:${COLORS[k]}"></span>
       <span><b>${esc(nameOf(x.c))}</b><small>${L.cls[k]}</small></span><span class="km">${kmf(x.at)} km</span></button></li>`}).join("")}</ul>
     <p class="credits">${L.routeSrc}</p>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const c=byId[b.dataset.id]; if(isMobile()) setCollapsed(true);

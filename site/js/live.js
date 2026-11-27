@@ -17,9 +17,14 @@ function liveReading(v,R,now){
 async function refreshLive(){
   liveAt=Date.now();
   let d;
-  try{ d=await (await fetch(LIVE_URL)).json(); }catch{ return; }  // ei yhteyttä: kartta jää keruuajon tietoihin
+  try{
+    const resp=await fetch(LIVE_URL);
+    if(!resp.ok) return;
+    d=await resp.json();
+  }catch{ return; }  // ei yhteyttä: kartta jää keruuajon tietoihin
+  if(!d||!Array.isArray(d.stations)) return;
   const by={};
-  d.stations.forEach(s=>{const v={}; s.sensorValues.forEach(x=>v[x.name]=x); by[s.id]=v;});
+  d.stations.forEach(s=>{const v={}; (s.sensorValues||[]).forEach(x=>v[x.name]=x); by[s.id]=v;});
   for(const c of DATA.cameras){
     if(c.km==null||c.km>DATA.maxKm||!by[c.st]) continue;
     const r=liveReading(by[c.st],DATA.rules,liveAt);

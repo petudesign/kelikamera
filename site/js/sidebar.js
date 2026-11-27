@@ -15,7 +15,7 @@ function renderFavCams(){
   el.innerHTML=`<div class="favhead">${ic("star")}<span>${T().favCamsLabel}</span></div>
     <div class="favchips" role="list">${list.map(c=>{
       const k=clsAt(c), t=c.roadT!=null?c.roadT:c.airT;
-      return `<button type="button" class="favchip" role="listitem" data-id="${c.id}">
+      return `<button type="button" class="favchip" role="listitem" data-id="${esc(c.id)}">
         <span class="sw" style="background:${COLORS[k]}"></span><span class="fn">${esc(nameOf(c))}</span>
         ${t!=null?`<span class="ft num">${num(t,"\u00a0°C")}</span>`:""}</button>`;
     }).join("")}</div>`;
@@ -125,11 +125,11 @@ function renderWorse(all){
    (list.length?`<ul class="list">${list.map(({c,since,reason})=>{const to=reason.to;
      const what=reason.drop?L.frictionDrop(num(reason.drop[0],"",2),num(reason.drop[1],"",2))
        :`${L.cls[reason.from]} → ${L.cls[to]}`;
-     return `<li><button class="item" data-id="${c.id}"><span class="sw" style="background:${COLORS[to]}"></span>
+     return `<li><button class="item" data-id="${esc(c.id)}"><span class="sw" style="background:${COLORS[to]}"></span>
        <span><b>${esc(nameOf(c))}</b><small>${esc(what)}</small></span><span class="ago">${L.ago(Math.max(0,since))}</span></button></li>`}).join("")}</ul>`
      :`<p class="blank">${worseScope==="all"?L.noWorse:L.noWorseHere}</p>`);
   el.querySelectorAll(".scope button").forEach(x=>x.onclick=()=>{worseScope=x.dataset.s; renderWorse(worsening());});
-  el.querySelectorAll(".item").forEach(x=>x.onclick=()=>{ if(innerWidth<=720) setCollapsed(true); openCam(x.dataset.id); });
+  el.querySelectorAll(".item").forEach(x=>x.onclick=()=>{ if(isMobile()) setCollapsed(true); openCam(x.dataset.id); });
 }
 
 function roadsList(){
@@ -147,14 +147,14 @@ function renderRoads(){
      return `<div class="roadstrip"><div class="bars">${cs.map(c=>`<i title="${esc(nameOf(c))}" style="background:${COLORS[clsAt(c)]}"></i>`).join("")}</div>
        <div class="ends"><span>${esc(cs[0].mun||T().roadStart)}</span><span>${esc(cs[cs.length-1].mun||T().roadEnd)}</span></div></div>
        ${worst?`<p class="blank" style="padding-bottom:4px">${T().worst}: <b style="color:var(--text)">${esc(nameOf(worst))}</b> · ${T().cls[clsAt(worst)]}</p>`:""}
-       <ul class="list">${cs.map(c=>`<li><button class="item" data-id="${c.id}"><span class="sw" style="background:${COLORS[clsAt(c)]}"></span>
+       <ul class="list">${cs.map(c=>`<li><button class="item" data-id="${esc(c.id)}"><span class="sw" style="background:${COLORS[clsAt(c)]}"></span>
          <span><b>${esc(nameOf(c))}</b><small>${esc(c.mun||"")}</small></span><span class="ago">${T().cls[clsAt(c)]}</span></button></li>`).join("")}</ul>`})():"");
   el.querySelector("#roadpick").onchange=e=>{
     road=e.target.value?+e.target.value:null; renderRoads(); renderLegend(); applyFilter();
     if(road!=null){const cs=roadsList().find(r=>r.road===road).cams, b=new maplibregl.LngLatBounds();
       cs.forEach(c=>b.extend([c.lon,c.lat])); map.fitBounds(b,{padding:fitPadding(),maxZoom:10});}
   };
-  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{ if(innerWidth<=720) setCollapsed(true); openCam(b.dataset.id); });
+  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{ if(isMobile()) setCollapsed(true); openCam(b.dataset.id); });
 }
 
 const keyEl=document.getElementById("key"), foldBtn=document.getElementById("fold");
@@ -162,7 +162,7 @@ function setCollapsed(c){ keyEl.classList.toggle("collapsed",c); foldBtn.setAttr
   foldBtn.setAttribute("aria-label",c?T().expand:T().collapse);
   if(!map.loaded()) return; if(routeOn) fitRoute(); else if(road==null) lockToFinland(); }
 foldBtn.onclick=()=>setCollapsed(!keyEl.classList.contains("collapsed"));
-if(matchMedia("(max-width:720px)").matches){ keyEl.classList.add("collapsed"); foldBtn.setAttribute("aria-expanded","false"); }
+if(isMobile()){ keyEl.classList.add("collapsed"); foldBtn.setAttribute("aria-expanded","false"); }
 // Välilehdet: nuolinäppäimet ja kiertävä tabindex (ARIA tabs -malli).
 const TABS=[...document.querySelectorAll('[role="tab"]')];
 const syncTabIdx=()=>TABS.forEach(x=>x.tabIndex=x.getAttribute("aria-selected")==="true"?0:-1);
@@ -188,35 +188,25 @@ document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{
 // Kamerahaku: ainoa tapa päästä kameraan näppäimistöllä ja ruudunlukijalla (karttapisteet eivät ole fokusoitavia).
 const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 (function setupCamSearch(){
-  const inp=document.getElementById("camq"), ul=document.getElementById("camres"), clr=document.getElementById("camclr"); let items=[], sel=-1;
-  const close=()=>{ul.hidden=true;inp.setAttribute("aria-expanded","false");sel=-1};
+  const inp=document.getElementById("camq"), ul=document.getElementById("camres"), clr=document.getElementById("camclr");
   const syncClr=()=>{clr.hidden=!inp.value};
-  const pick=i=>{const c=items[i]; if(!c) return; inp.value=""; syncClr(); close(); if(isMobile()) setCollapsed(true); openCam(c.id);};
-  const draw=()=>{
-    ul.innerHTML=items.length?items.map((c,i)=>{const k=clsAt(c);return `<li><button type="button" class="cam" role="option" id="camopt-${i}" aria-selected="${i===sel}" data-i="${i}">
-      <span class="sw" style="background:${COLORS[k]}"></span><span>${esc(nameOf(c))}</span><span class="k">${T().cls[k]}</span>${c.mun?`<small>${esc(c.mun)}</small>`:""}</button></li>`}).join("")
-      :`<li><span class="blank" style="display:block;padding:8px 10px">${T().camNone}</span></li>`;
-    ul.hidden=false; inp.setAttribute("aria-expanded","true");
-    if(sel>=0) inp.setAttribute("aria-activedescendant",`camopt-${sel}`); else inp.removeAttribute("aria-activedescendant");
-    ul.querySelectorAll("button").forEach(b=>b.onmousedown=e=>{e.preventDefault();pick(+b.dataset.i)});
-  };
-  clr.onclick=()=>{inp.value="";syncClr();items=[];close();inp.focus()};
-  inp.addEventListener("input",()=>{
-    syncClr();
-    const q=norm(inp.value.trim()); if(q.length<2){items=[];close();return}
-    const words=q.split(/\s+/);
-    items=DATA.cameras.map(c=>{const hay=norm(`${nameOf(c)} ${c.name} ${c.mun||""} ${c.road!=null?"tie road vt kt "+c.road:""}`);
-        if(!words.every(w=>hay.includes(w))) return null;
-        return {c,score:(norm(nameOf(c)).startsWith(q)?0:1)+(c.cls?0:.5)};})
-      .filter(Boolean).sort((a,b)=>a.score-b.score||nameOf(a.c).localeCompare(nameOf(b.c))).slice(0,8).map(x=>x.c);
-    sel=-1; draw();
+  const cb=createCombobox({
+    input:inp, list:ul, minLen:2, activeIdPrefix:"camopt-",
+    onInput:syncClr,
+    query:raw=>{
+      if(!DATA) return null;
+      const q=norm(raw), words=q.split(/\s+/);
+      return DATA.cameras.map(c=>{const hay=norm(`${nameOf(c)} ${c.name} ${c.mun||""} ${c.road!=null?"tie road vt kt "+c.road:""}`);
+          if(!words.every(w=>hay.includes(w))) return null;
+          return {c,score:(norm(nameOf(c)).startsWith(q)?0:1)+(c.cls?0:.5)};})
+        .filter(Boolean).sort((a,b)=>a.score-b.score||nameOf(a.c).localeCompare(nameOf(b.c))).slice(0,8).map(x=>x.c);
+    },
+    renderItem:(c,i,sel)=>{const k=clsAt(c);return `<li><button type="button" class="cam" role="option" id="camopt-${i}" aria-selected="${sel}" data-i="${i}">
+      <span class="sw" style="background:${COLORS[k]}"></span><span>${esc(nameOf(c))}</span><span class="k">${T().cls[k]}</span>${c.mun?`<small>${esc(c.mun)}</small>`:""}</button></li>`;},
+    renderEmpty:()=>`<li><span class="blank" style="display:block;padding:8px 10px">${T().camNone}</span></li>`,
+    onPick:c=>{inp.value=""; syncClr(); if(isMobile()) setCollapsed(true); openCam(c.id);}
   });
-  inp.addEventListener("keydown",e=>{
-    if(e.key==="ArrowDown"&&items.length){sel=(sel+1)%items.length;draw();e.preventDefault()}
-    else if(e.key==="ArrowUp"&&items.length){sel=(sel-1+items.length)%items.length;draw();e.preventDefault()}
-    else if(e.key==="Enter"&&items.length){pick(sel<0?0:sel);e.preventDefault()}
-    else if(e.key==="Escape"){close()}});
-  inp.addEventListener("blur",()=>setTimeout(close,150));
+  clr.onclick=()=>{inp.value=""; syncClr(); cb.clear(); inp.focus();};
 })();
 
 // Haitarit: Tietosuoja skrollautuu näkyviin avattaessa; Esc sulkee avoimet haitarit.

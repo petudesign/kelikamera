@@ -1,9 +1,16 @@
 // Käynnistys: data ja ensimmäinen piirto.
 
-Promise.all([fetch("data/latest.json").then(r=>r.json()),fetch("data/warnings.json").then(r=>r.json()).catch(()=>({warnings:[]}))])
+const fetchJson=url=>fetch(url).then(r=>r.ok?r.json():Promise.reject(new Error(`${url}: ${r.status}`)));
+
+Promise.all([fetchJson("data/latest.json"),fetchJson("data/warnings.json").catch(()=>({warnings:[]}))])
 .then(([d,w])=>{
-  DATA=d; WARN=w.warnings||[]; d.cameras.forEach(c=>byId[c.id]=c);
+  if(!d||!Array.isArray(d.cameras)) throw new Error("Virheellinen latest.json");
+  DATA=d; WARN=Array.isArray(w.warnings)?w.warnings:[]; d.cameras.forEach(c=>byId[c.id]=c);
   renderAll(); syncTabIdx(); document.getElementById("key").classList.remove("loading");
   mapReady.then(addLayers).then(startLive);
   map.on("moveend",()=>{ if(worseScope==="view"&&!document.getElementById("p-worse").hidden) renderWorse(worsening()); });
+})
+.catch(()=>{
+  document.getElementById("key").classList.remove("loading");
+  document.getElementById("rows").innerHTML=`<li class="blank">${esc(T().loadFail)}</li>`;
 });

@@ -26,9 +26,9 @@ function loadPresets(c){
   entry.p=fetch(`${HIST_API}${c.id}`)
     .then(r=>r.ok?r.json():Promise.reject(r.status))
     .then(d=>{
-      const raw=((d.properties&&d.properties.presets)||[]).filter(p=>p.inCollection!==false&&p.imageUrl);
+      const raw=((d.properties&&d.properties.presets)||[]).filter(p=>p.inCollection!==false&&safeUrl(p.imageUrl));
       if(raw.length){
-        const mapped=raw.map(p=>({id:p.id,name:(p.presentationName||"").trim(),url:p.imageUrl}));
+        const mapped=raw.map(p=>({id:p.id,name:(p.presentationName||"").trim(),url:safeUrl(p.imageUrl)}));
         // oletussuunta (yleensä Tienpinta) ensimmäiseksi, jotta kortti aukeaa tuttuun näkymään
         const di=mapped.findIndex(p=>p.id===defId);
         if(di>0){ const [def]=mapped.splice(di,1); mapped.unshift(def); }
@@ -51,7 +51,7 @@ function loadHist(c){
     .then(d=>{
       const map={};
       (d.presets||[]).forEach(pr=>{
-        map[pr.id]=(pr.history||[]).map(x=>({t:Date.parse(x.lastModified),url:x.imageUrl})).filter(x=>x.t);
+        map[pr.id]=(pr.history||[]).map(x=>({t:Date.parse(x.lastModified),url:safeUrl(x.imageUrl)})).filter(x=>x.t&&x.url);
       });
       rec.byPreset=map;
     })

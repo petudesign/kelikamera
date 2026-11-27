@@ -2,8 +2,8 @@
 
 const FINLAND=[[19.0,59.6],[31.7,70.1]];
 function fitPadding(){
-  const mobile=innerWidth<=720, key=document.getElementById("key");
-  return mobile?{top:key.offsetHeight+20,bottom:80,left:12,right:12}:{top:64,bottom:90,left:390,right:24};
+  const key=document.getElementById("key");
+  return isMobile()?{top:key.offsetHeight+20,bottom:80,left:12,right:12}:{top:64,bottom:90,left:390,right:24};
 }
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/dark",
   bounds:FINLAND,fitBoundsOptions:{padding:fitPadding()},maxZoom:14,attributionControl:false});
@@ -27,8 +27,17 @@ function addMask(){
 }
 function reveal(){document.getElementById("map").classList.add("shown")}
 map.on("sourcedata",function masked(e){if(e.sourceId==="fin"&&e.isSourceLoaded){map.off("sourcedata",masked);reveal()}});
+let mapLoaded=false;
+map.on("error",()=>{
+  if(mapLoaded||document.getElementById("map-err")) return;
+  const msg=document.createElement("div");
+  msg.id="map-err"; msg.className="map-err"; msg.setAttribute("role","status");
+  msg.textContent=T().mapFail;
+  document.body.appendChild(msg);
+  reveal();
+});
 setTimeout(reveal,4000);
-mapReady.then(()=>{lockToFinland();addMask()});
+mapReady.then(()=>{mapLoaded=true; const e=document.getElementById("map-err"); if(e) e.remove(); lockToFinland();addMask()});
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(lockToFinland,150)});
 
 function geojson(){
