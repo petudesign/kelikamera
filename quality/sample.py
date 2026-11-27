@@ -21,11 +21,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "collector"))
 from count import MAX_KM, summaries_hf  # noqa: E402
 from labels import CLASSES  # noqa: E402
+from storage import hf_repo  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = ROOT / "quality" / "sample.json"
 IMAGES = ROOT / "out" / "review" / "images"
-REPO = "petudesign/kelikamera"
+REPO = hf_repo()
 STRATA = CLASSES + ["ohut"]
 PER_STRATUM = 50
 RUNS = 30

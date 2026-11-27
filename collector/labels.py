@@ -36,6 +36,7 @@ CLASS_OF_CODE = {
     5: "jää/kuura", 7: "jää/kuura",
 }
 CLASSES = ["kuiva", "kostea", "märkä", "luminen", "jää/kuura"]
+MAX_KM = 5.0  # kauempana oleva asema ei kerro kameran kelistä
 
 MAX_SENSOR_GAP_MIN = 30     # format 1: anturilukema ajohetkeltä, kuva voi olla vanhempi
 MAX_SENSOR_GAP_MIN_V2 = 10  # format 2: anturiarvo historiasta kuvan ottohetkeltä
@@ -51,7 +52,7 @@ def is_thin(cls: str | None, friction: float | None, ice_mm: float | None, snow_
             and friction >= THIN_MIN_FRICTION and layer < THIN_MAX_LAYER_MM)
 
 
-def _t(s: str | None) -> datetime | None:
+def parse_time(s: str | None) -> datetime | None:
     return datetime.fromisoformat(s.replace("Z", "+00:00")) if s else None
 
 
@@ -59,7 +60,7 @@ def station_index(weather_raw: dict) -> dict[int, dict[str, dict]]:
     """{asema_id: {anturin_nimi: {'value':…, 'time': datetime}}}"""
     return {
         s["id"]: {
-            v["name"]: {"value": v.get("value"), "time": _t(v.get("measuredTime"))}
+            v["name"]: {"value": v.get("value"), "time": parse_time(v.get("measuredTime"))}
             for v in s.get("sensorValues", [])
         }
         for s in weather_raw.get("stations", [])
@@ -70,7 +71,7 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
     """Tunniste yhdelle manifestin kuvalle. Palauttaa aina dictin; 'class' None = ei käyttökelpoinen."""
     out = {"class": None, "reason": None}
     if "sensors" in item:  # format 2: anturit kuvan ottohetkellä suoraan manifestissa
-        s = {k: {"value": v.get("value"), "time": _t(v.get("measuredTime"))} for k, v in item["sensors"].items()}
+        s = {k: {"value": v.get("value"), "time": parse_time(v.get("measuredTime"))} for k, v in item["sensors"].items()}
         max_gap = MAX_SENSOR_GAP_MIN_V2
     else:
         s = stations.get(item.get("weatherStation"))
@@ -97,7 +98,7 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
     if not opt or opt["value"] is None:
         out["reason"] = "ei optista anturia"
         return out
-    img_t = _t(item.get("measuredTime"))
+    img_t = parse_time(item.get("measuredTime"))
     if img_t and opt["time"] and abs((img_t - opt["time"]).total_seconds()) > max_gap * 60:
         out["reason"] = "anturi ja kuva eri aikaan"
         return out

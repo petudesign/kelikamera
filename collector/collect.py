@@ -17,7 +17,6 @@ import argparse
 import gzip
 import io
 import json
-import os
 import sys
 import tarfile
 from concurrent.futures import ThreadPoolExecutor
@@ -193,9 +192,6 @@ def main() -> None:
 
     written = run(args.limit, args.dry_run)
     upload(written)
-    if out := os.environ.get("GITHUB_OUTPUT"):
-        with open(out, "a") as f:
-            f.write(f"collected={'true' if written else 'false'}\n")
 
 
 if __name__ == "__main__":

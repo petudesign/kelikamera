@@ -21,12 +21,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from labels import CLASSES  # noqa: E402
+from labels import CLASSES, MAX_KM  # noqa: E402
+from storage import OUT, hf_repo  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "out"
 READY_CAMERAS = 30  # "valmis" = näin monta eri kameraa luokassa
-MAX_KM = 5.0        # sama raja kuin kartalla: kauempana olevan aseman mittaus ei kerro kameran kelistä
 
 
 def summaries_local() -> list[dict]:
@@ -48,7 +46,7 @@ def summaries_local() -> list[dict]:
 def summaries_hf() -> list[dict]:
     """Vain yhteenvedot Hugging Facesta (muutama kt per keruuhetki)."""
     from huggingface_hub import snapshot_download
-    repo = os.environ.get("HF_REPO", "petudesign/kelikamera")
+    repo = hf_repo()
     d = Path(snapshot_download(repo, repo_type="dataset", allow_patterns="data/**/*.labels.json",
                                local_dir=OUT / "hf", token=os.environ.get("HF_TOKEN")))
     return [json.loads(p.read_text()) for p in sorted(d.glob("data/**/*.labels.json"))]

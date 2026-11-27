@@ -41,14 +41,19 @@ def km(lat1, lon1, lat2, lon2) -> float:
 def summarize(tar_path: Path, coords: dict[int, tuple[float, float]]) -> dict:
     """Keruutiedoston tunnisteet. coords = {asema_id: (lon, lat)} kameran ja aseman etäisyyttä varten."""
     with tarfile.open(tar_path) as t:
-        meta = json.load(t.extractfile("manifest.json"))
-        stations = station_index(json.loads(gzip.decompress(t.extractfile("weather.json.gz").read())))
+        mf = t.extractfile("manifest.json")
+        wf = t.extractfile("weather.json.gz")
+        if mf is None or wf is None:
+            raise ValueError(f"{tar_path.name}: manifest.json tai weather.json.gz puuttuu")
+        meta = json.load(mf)
+        stations = station_index(json.loads(gzip.decompress(wf.read())))
         items = []
         for it in meta["items"]:
             lab = label(it, stations)
             st = coords.get(it.get("weatherStation"))
             try:
-                ir = is_ir(t.extractfile(f"images/{it['preset']}.jpg").read())
+                img_f = t.extractfile(f"images/{it['preset']}.jpg")
+                ir = is_ir(img_f.read()) if img_f is not None else None
             except (KeyError, OSError):
                 ir = None
             items.append({
@@ -78,6 +83,8 @@ def write_summary(tar_path: Path, coords: dict) -> Path:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise SystemExit("Käyttö: python collector/summary.py <tiedosto.tar>")
     s = summarize(Path(sys.argv[1]), station_coords())
     print(json.dumps({k: v for k, v in s.items() if k != "items"}, ensure_ascii=False), len(s["items"]), "kuvaa")
     print(json.dumps(s["items"][:2], ensure_ascii=False, indent=1))

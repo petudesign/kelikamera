@@ -12,10 +12,8 @@ Kuvia ei kopioida sivulle: sivu näyttää Fintrafficin tuoreen kuvan suoraan he
 """
 from __future__ import annotations
 
-import gzip
 import json
 import sys
-import tarfile
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -24,14 +22,13 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
-from digitraffic import camera_meta, get_json, pick_preset, weather_stations  # noqa: E402
+from digitraffic import camera_meta, get_json, pick_preset, sensor_names, weather_stations  # noqa: E402
+from labels import (CLASS_OF_CODE, CLASSES, MAX_KM, THIN_MAX_LAYER_MM, THIN_MIN_FRICTION,  # noqa: E402
+                    is_thin, label, parse_time, station_index)
 from summary import km  # noqa: E402
-from labels import CLASS_OF_CODE, CLASSES, THIN_MAX_LAYER_MM, THIN_MIN_FRICTION, is_thin, label, station_index  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "out"
 SITE_DATA = ROOT / "site" / "data"
-MAX_KM = 5.0       # kauempana oleva asema ei kerro tämän kameran kelistä
 HOURS = 24
 SENSOR_MAX_AGE = timedelta(minutes=90)  # vanhempi anturilukema ei kerro nykytilasta
 SENSOR_CLASS = "OPTISEN_ANTURIN_KELI1"
@@ -46,13 +43,9 @@ def r2(x):
     return None if x is None else round(float(x), 2)
 
 
-def t(s: str) -> datetime:
-    return datetime.fromisoformat(s.replace("Z", "+00:00"))
-
-
 # ------------------------------------------------------------------ history --
 def sensor_ids() -> dict[str, int]:
-    return {s["name"]: s["id"] for s in get_json("/api/weather/v2/sensors")["sensors"]}
+    return {name: sid for sid, name in sensor_names().items()}
 
 
 def station_history(station: int, ids: dict[str, int], slots: list[datetime], sensors: dict[str, str]) -> dict:
@@ -63,10 +56,11 @@ def station_history(station: int, ids: dict[str, int], slots: list[datetime], se
         try:
             d = get_json(f"/api/weather/v2/stations/{station}/data/history?sensorId={ids[name]}"
                          f"&from={frm:%Y-%m-%dT%H:%M:%SZ}&to={to:%Y-%m-%dT%H:%M:%SZ}")
-        except Exception:
+        except (requests.RequestException, KeyError, ValueError) as e:
+            print(f"  ! historia asema {station} ({name}): {e}", file=sys.stderr)
             out[key] = [None] * len(slots)
             continue
-        vals = sorted((t(v["measuredTime"]), v["value"]) for v in d.get("sensorValues", []))
+        vals = sorted((parse_time(v["measuredTime"]), v["value"]) for v in d.get("sensorValues", []) if v.get("measuredTime"))
         series, i, last = [], 0, None
         for slot in slots:
             while i < len(vals) and vals[i][0] <= slot:
@@ -102,7 +96,9 @@ def simplify(points: list[tuple[float, float]], tol: float = 0.01) -> list[tuple
 
 def traffic_warnings() -> list[dict]:
     """Voimassa olevat liikennesäävaroitukset. Jokaisessa CAP-viestissä on info-osa per kieli (fi/sv/en)."""
-    root = ET.fromstring(requests.get(CAP_FEED, timeout=60).content)
+    resp = requests.get(CAP_FEED, timeout=60)
+    resp.raise_for_status()
+    root = ET.fromstring(resp.content)
     now, out = datetime.now(timezone.utc), []
     for alert in root.iter(f"{{{NS['c']}}}alert"):
         w = {"id": alert.findtext("c:identifier", namespaces=NS), "headline": {}, "description": {},
@@ -121,19 +117,20 @@ def traffic_warnings() -> list[dict]:
             w["description"][lang] = info.findtext("c:description", namespaces=NS)
             if not w["polygons"]:
                 for poly in info.iter(f"{{{NS['c']}}}polygon"):
+                    if not poly.text:
+                        continue
                     pts = [tuple(map(float, p.split(",")))[::-1] for p in poly.text.split()]  # lat,lon → lon,lat
                     ring = [[round(x, 3), round(y, 3)] for x, y in simplify(pts)]
                     if len(ring) >= 4:
                         w["polygons"].append(ring)
-        if w["headline"] and w["polygons"] and w.get("expires") and t(w["expires"]) > now:
+        exp = parse_time(w.get("expires"))
+        if w["headline"] and w["polygons"] and exp and exp > now:
             out.append(w)
     return out
 
 
 # --------------------------------------------------------------------- main --
-def main() -> None:
-    # Nykytila suoraan Digitrafficista, ei keruuajosta: sivu voi päivittyä useammin kuin kuvia kerätään.
-    started = datetime.now(timezone.utc)
+def fetch_cameras(started: datetime) -> tuple[list[dict], set[int]]:
     cam_meta = {c["id"]: c for c in camera_meta(None)}
     coords = {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
     measured = {p["id"]: p.get("measuredTime")
@@ -143,15 +140,13 @@ def main() -> None:
     for cam in cam_meta.values():
         pr = pick_preset(cam)
         mt = measured.get(pr["id"])
-        if not mt or started - t(mt) > timedelta(hours=2):  # kamera jumissa
+        mt_dt = parse_time(mt)
+        if not mt_dt or started - mt_dt > timedelta(hours=2):  # kamera jumissa
             continue
         items.append({"camera": cam["id"], "cameraName": cam.get("name"), "lat": cam["lat"], "lon": cam["lon"],
                       "road": cam.get("road"), "municipality": cam.get("municipality"),
                       "weatherStation": cam.get("nearestWeatherStationId"),
                       "preset": pr["id"], "presetName": pr.get("name"), "measuredTime": mt})
-
-    now = started.replace(minute=0, second=0, microsecond=0)
-    slots = [now - timedelta(hours=HOURS - k) for k in range(HOURS + 1)]
 
     cams, need = [], set()
     for item in items:
@@ -179,8 +174,7 @@ def main() -> None:
             "view": item.get("presetName"),
             "t": item["measuredTime"],
             # anturin oma mittausaika (optinen kelianturi), ei kamerakuvan aika
-            "mt": (lambda o: o["time"].isoformat() if o and o.get("time") else None)(
-                (stations.get(item.get("weatherStation")) or {}).get("OPTISEN_ANTURIN_KELI1")) if near else None,
+            "mt": (opt["time"].isoformat() if opt.get("time") else None) if near else None,
             "cls": cls,
             "why": None if cls else ("far" if d and d > MAX_KM else "nosensor"),
             "st": item.get("weatherStation"), "km": round(d, 1) if d is not None else None,
@@ -192,7 +186,10 @@ def main() -> None:
             "roadT": r2(lab.get("road_temp")) if near else None,
             "airT": r2(lab.get("air_temp")) if near else None,
         })
+    return cams, need
 
+
+def attach_history(cams: list[dict], need: set[int], slots: list[datetime]) -> None:
     print(f"Historia {len(need)} asemalle…")
     ids = sensor_ids()
     with ThreadPoolExecutor(8) as ex:
@@ -214,6 +211,8 @@ def main() -> None:
             c["th"] = [i for i, (k, f) in enumerate(zip(ks, h["f"]))
                        if "s" in h and is_thin(k, f, h["i"][i], h["s"][i])]
 
+
+def write_outputs(started: datetime, slots: list[datetime], cams: list[dict]) -> None:
     counts = {k: 0 for k in CLASSES} | {"ei mittausta": 0}
     for c in cams:
         counts[c["cls"] or "ei mittausta"] += 1
@@ -249,8 +248,18 @@ def main() -> None:
         print(f"  site/data/{f}: {(SITE_DATA / f).stat().st_size / 1e3:.0f} kt")
 
 
+def main() -> None:
+    # Nykytila suoraan Digitrafficista, ei keruuajosta: sivu voi päivittyä useammin kuin kuvia kerätään.
+    started = datetime.now(timezone.utc)
+    now = started.replace(minute=0, second=0, microsecond=0)
+    slots = [now - timedelta(hours=HOURS - k) for k in range(HOURS + 1)]
+    cams, need = fetch_cameras(started)
+    attach_history(cams, need, slots)
+    write_outputs(started, slots, cams)
+
+
 def stamp_assets() -> None:
-    """Skriptien osoitteisiin sisällön tiiviste (js/x.js?v=…). GitHub Pagesin 10 min välimuisti antoi
+    """Skriptien ja tyylien osoitteisiin sisällön tiiviste (?v=…). GitHub Pagesin 10 min välimuisti antoi
     muuten uuden sivun kanssa vanhan skriptin (DECISIONS.md 2026-11-13)."""
     import hashlib
     import re
@@ -258,10 +267,11 @@ def stamp_assets() -> None:
     html = (site / "index.html").read_text()
 
     def stamp(m: re.Match) -> str:
-        v = hashlib.sha1((site / m.group(1)).read_bytes()).hexdigest()[:10]
-        return f'src="{m.group(1)}?v={v}"'
+        attr, rel = m.group(1), m.group(2)
+        v = hashlib.sha1((site / rel).read_bytes()).hexdigest()[:10]
+        return f'{attr}="{rel}?v={v}"'
 
-    new = re.sub(r'src="(js/[\w-]+\.js)(?:\?v=[0-9a-f]+)?"', stamp, html)
+    new = re.sub(r'(src|href)="((?:js|css)/[\w-]+\.(?:js|css))(?:\?v=[0-9a-f]+)?"', stamp, html)
     if new != html:
         (site / "index.html").write_text(new)
 

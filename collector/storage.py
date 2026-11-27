@@ -8,6 +8,11 @@ from pathlib import Path
 from slots import parse_stamp
 
 OUT = Path(__file__).resolve().parent.parent / "out"
+DEFAULT_HF_REPO = "petudesign/kelikamera"
+
+
+def hf_repo() -> str:
+    return os.environ.get("HF_REPO") or DEFAULT_HF_REPO
 
 
 def hf_config() -> tuple[str, str] | None:
@@ -20,12 +25,13 @@ def existing_stamps(now: datetime, days: int = 3) -> list[datetime]:
     dates = [now - timedelta(days=d) for d in range(days)]
     if cfg := hf_config():
         from huggingface_hub import HfApi
+        from huggingface_hub.errors import EntryNotFoundError
         api, names = HfApi(token=cfg[0]), []
         for day in dates:
             try:
                 names += [f.path.rsplit("/", 1)[-1] for f in
                           api.list_repo_tree(cfg[1], path_in_repo=day.strftime("data/%Y/%m/%d"), repo_type="dataset")]
-            except Exception:  # päivän kansiota ei vielä ole
+            except EntryNotFoundError:  # päivän kansiota ei vielä ole
                 pass
     else:
         names = [f.name for day in dates for f in (OUT / day.strftime("%Y/%m/%d")).glob("*.tar")]

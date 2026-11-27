@@ -4,8 +4,8 @@ Ennusteita ei saa jälkikäteen historiasta, joten ne tallennetaan ajohetkeltä 
 """
 from __future__ import annotations
 
-import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -17,12 +17,26 @@ FMI_QUERY = "fmi::forecast::edited::weather::scandinavia::point::multipointcover
 FMI_PARAMS = ["Temperature", "DewPoint", "Humidity", "Precipitation1h", "TotalCloudCover", "WindSpeedMS"]
 FMI_HOURS = 96
 FMI_BATCH = 60  # asemia per pyyntö; URL:n pituus rajoittaa
+FMI_NS = {"gml": "http://www.opengis.net/gml/3.2", "gmlcov": "http://www.opengis.net/gmlcov/1.0"}
 
 
 def road_forecast() -> dict:
     data = get_json("/api/weather/v2/forecast-sections/forecasts")
     data["summary"] = {"sections": len(data.get("forecastSections", []))}
     return data
+
+
+def _fetch_fmi_batch(params: list[tuple[str, str]]) -> str:
+    for attempt in range(3):
+        try:
+            r = requests.get(FMI_WFS, params=params, timeout=60)
+            r.raise_for_status()
+            return r.text
+        except requests.RequestException:
+            if attempt == 2:
+                raise
+            time.sleep(2 * (attempt + 1))
+    raise RuntimeError("unreachable")
 
 
 def fmi_forecast() -> dict:
@@ -36,13 +50,14 @@ def fmi_forecast() -> dict:
         q = [("service", "WFS"), ("version", "2.0.0"), ("request", "getFeature"), ("storedquery_id", FMI_QUERY),
              ("parameters", ",".join(FMI_PARAMS)), ("timestep", "180"), ("endtime", end)]
         q += [("latlon", f"{s['lat']},{s['lon']}") for s in batch]
-        r = requests.get(FMI_WFS, params=q, timeout=60)
-        r.raise_for_status()
-        pos = re.search(r"<gmlcov:positions>(.*?)</gmlcov:positions>", r.text, re.S)
-        val = re.search(r"<gml:doubleOrNilReasonTupleList>(.*?)</gml:doubleOrNilReasonTupleList>", r.text, re.S)
+        root = ET.fromstring(_fetch_fmi_batch(q))
+        pos = root.findtext(".//gmlcov:positions", namespaces=FMI_NS)
+        val = root.findtext(".//gml:doubleOrNilReasonTupleList", namespaces=FMI_NS)
         if not (pos and val):
             raise RuntimeError(f"tyhjä vastaus erälle {i}")
-        p, v, n = pos.group(1).split(), val.group(1).split(), len(FMI_PARAMS)
+        p, v, n = pos.split(), val.split(), len(FMI_PARAMS)
+        if len(p) % 3 != 0 or len(v) < (len(p) // 3) * n:
+            raise RuntimeError(f"puutteellinen vastaus erälle {i}: {len(p)} sijaintia, {len(v)} arvoa")
         series: dict[tuple, list] = {}
         for idx, k in enumerate(range(0, len(p), 3)):
             vals = [None if x == "NaN" else float(x) for x in v[idx * n:(idx + 1) * n]]

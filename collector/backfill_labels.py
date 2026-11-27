@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from digitraffic import station_coords  # noqa: E402
+from storage import hf_repo  # noqa: E402
 from summary import write_summary  # noqa: E402
 
 BATCH = 50
@@ -28,7 +29,7 @@ def main() -> None:
     args = ap.parse_args()
     from huggingface_hub import CommitOperationAdd, HfApi, hf_hub_download
 
-    repo, token = os.environ.get("HF_REPO", "petudesign/kelikamera"), os.environ.get("HF_TOKEN")
+    repo, token = hf_repo(), os.environ.get("HF_TOKEN")
     api = HfApi(token=token)
     files = set(api.list_repo_files(repo, repo_type="dataset"))
     tars = sorted(f for f in files if f.startswith("data/") and f.endswith(".tar"))
@@ -41,11 +42,17 @@ def main() -> None:
     ops: list = []
     with tempfile.TemporaryDirectory() as tmp:
         for i, f in enumerate(missing, 1):
-            local = Path(hf_hub_download(repo, f, repo_type="dataset", token=token, local_dir=tmp))
-            out = write_summary(local, coords)
-            ops.append(CommitOperationAdd(path_in_repo=f[:-4] + ".labels.json", path_or_fileobj=out.read_bytes()))
-            local.unlink()
-            if len(ops) >= BATCH or i == len(missing):
+            local: Path | None = None
+            try:
+                local = Path(hf_hub_download(repo, f, repo_type="dataset", token=token, local_dir=tmp))
+                out = write_summary(local, coords)
+                ops.append(CommitOperationAdd(path_in_repo=f[:-4] + ".labels.json", path_or_fileobj=out.read_bytes()))
+            except Exception as e:
+                print(f"  ! {f}: {e}", file=sys.stderr)
+            finally:
+                if local is not None:
+                    local.unlink(missing_ok=True)
+            if ops and (len(ops) >= BATCH or i == len(missing)):
                 api.create_commit(repo_id=repo, repo_type="dataset", operations=ops,
                                   commit_message=f"Tunnisteyhteenvedot ({len(ops)})")
                 print(f"  ladattu {i}/{len(missing)}")

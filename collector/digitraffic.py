@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,8 @@ from pathlib import Path
 
 import requests
 from PIL import Image
+
+from labels import parse_time
 
 API = "https://tie.digitraffic.fi"
 CACHE = Path(__file__).resolve().parent.parent / "cache"
@@ -20,33 +23,45 @@ IMG_WIDTH = 640
 JPEG_QUALITY = 80
 WORKERS = 8
 
-session = requests.Session()
-session.headers.update({"Digitraffic-User": "Kelikamera-AI/0.1", "Accept-Encoding": "gzip"})
+_TLS = threading.local()
+
+
+def _session() -> requests.Session:
+    """Säiekohtainen requests.Session (requests.Session ei ole säieturvallinen)."""
+    s = getattr(_TLS, "session", None)
+    if s is None:
+        s = requests.Session()
+        s.headers.update({"Digitraffic-User": "Kelikamera-AI/0.1", "Accept-Encoding": "gzip"})
+        _TLS.session = s
+    return s
 
 
 def get_json(path: str) -> dict:
     for attempt in range(3):
         try:
-            r = session.get(API + path, timeout=30)
+            r = _session().get(API + path, timeout=30)
             r.raise_for_status()
             return r.json()
-        except requests.RequestException:
+        except (requests.RequestException, ValueError):
             if attempt == 2:
                 raise
             time.sleep(2 * (attempt + 1))
     raise RuntimeError("unreachable")
 
 
-def parse_time(s: str | None) -> datetime | None:
-    return datetime.fromisoformat(s.replace("Z", "+00:00")) if s else None
-
-
 def _cached(name: str, version: int | None = None):
     f = CACHE / name
     if not f.exists():
         return None
-    data = json.loads(f.read_text())
-    fresh = datetime.now(timezone.utc) - parse_time(data["fetched"]) < CACHE_MAX_AGE
+    try:
+        data = json.loads(f.read_text())
+        fetched = parse_time(data.get("fetched"))
+    except (ValueError, OSError, AttributeError) as e:
+        print(f"  ! välimuisti {name}: {e}", file=sys.stderr)
+        return None
+    if fetched is None:
+        return None
+    fresh = datetime.now(timezone.utc) - fetched < CACHE_MAX_AGE
     return data if fresh and data.get("v") == version else None
 
 
@@ -139,7 +154,7 @@ def fetch_image(url: str) -> bytes | None:
     """Kuva pienennettynä JPEG:ksi. Kuvapalvelin katkaisee joskus siirron, joten kolme yritystä."""
     for attempt in range(3):
         try:
-            r = session.get(url, timeout=30)
+            r = _session().get(url, timeout=30)
             r.raise_for_status()
             im = Image.open(io.BytesIO(r.content)).convert("RGB")
             break
