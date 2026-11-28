@@ -6,6 +6,8 @@ __pycache__/
 .DS_Store
 site/data/latest.json
 site/data/warnings.json
+site/data/traffic.json
+site/data/maintenance.json
 node_modules/
 video/.whisper/
 video/out/

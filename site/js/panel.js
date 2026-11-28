@@ -71,16 +71,29 @@ function fmtView(raw,idx=0){
      .replace(/\s{2,}/g," ").trim();
   return s?s[0].toUpperCase()+s.slice(1):T().viewFallback(idx+1);
 }
+function stripRoad(s,roadNum){
+  if(!s||roadNum==null) return s||"";
+  const m=s.replace(new RegExp(`^(?:tie|road|vt|kt|st)\\s*${roadNum}\\b[\\s,·-]*`,"i"),"").trim();
+  return m||s;
+}
 const viewLabel=c=>{const pr=activePreset(c); return fmtView(pr.name||c.view,0)};
-const viewName=c=>{const v=viewLabel(c); return v?" · "+esc(v):""};
+const viewName=c=>{if(presetsOf(c).length>1) return ""; const v=viewLabel(c); return v?" · "+esc(v):""};
 
 function presetPillsHtml(c){
   const list=presetsOf(c);
   if(list.length<=1) return "";
   const sel=activePreset(c).id;
   return `<div class="presets" role="group" aria-label="${esc(T().views)}">${list.map((p,i)=>
-    `<button type="button" class="pill" data-pid="${esc(p.id)}" aria-pressed="${p.id===sel}">${esc(fmtView(p.name,i)||T().viewFallback(i+1))}</button>`
+    `<button type="button" class="pill" data-pid="${esc(p.id)}" aria-pressed="${p.id===sel}">${esc(stripRoad(fmtView(p.name,i)||T().viewFallback(i+1),c.road))}</button>`
   ).join("")}</div>`;
+}
+
+function syncPresetsEl(){
+  const pr=panelEl.querySelector("#campresets .presets");
+  if(!pr) return;
+  initDragScroll(pr);
+  const act=pr.querySelector('[aria-pressed="true"]');
+  if(act) act.scrollIntoView({inline:"nearest",block:"nearest"});
 }
 
 function selectPreset(c,pid){
@@ -88,6 +101,7 @@ function selectPreset(c,pid){
   PRESET_SEL[c.id]=pid;
   const vw=panelEl.querySelector("#camview"); if(vw) vw.innerHTML=viewName(c);
   const prEl=panelEl.querySelector("#campresets"); if(prEl) prEl.innerHTML=presetPillsHtml(c);
+  syncPresetsEl();
   const ct=panelEl.querySelector("#camtime"); if(ct) ct.textContent="";
   showShot(c,false);
   if(slot===24) camTime(c);
@@ -131,14 +145,64 @@ function roadNavHtml(c){
   if(list.length<2) return "";
   const i=list.findIndex(x=>x.id===c.id); if(i<0) return "";
   const L=T(), prev=list[i-1], next=list[i+1];
-  const btn=(cam,dir,icon,lbl)=>cam
-    ?`<button type="button" class="rn-btn rn-${dir}" data-cam="${esc(cam.id)}" aria-label="${esc(lbl)}: ${esc(nameOf(cam))}" title="${esc(nameOf(cam))}">${dir==="prev"?icon:""}<span>${esc(nameOf(cam))}</span>${dir==="next"?icon:""}</button>`
-    :`<span class="rn-btn rn-${dir} rn-off" aria-hidden="true">${dir==="prev"?icon:""}<span>–</span>${dir==="next"?icon:""}</span>`;
+  const btn=(cam,dir,icon,lbl,key)=>cam
+    ?`<button type="button" class="rn-btn rn-${dir}" data-cam="${esc(cam.id)}" aria-label="${esc(lbl)}: ${esc(nameOf(cam))}" title="${esc(nameOf(cam))} (${key})">${dir==="prev"?icon:""}<span>${esc(stripRoad(nameOf(cam),c.road))}</span>${dir==="next"?icon:""}</button>`
+    :`<span class="rn-btn rn-${dir} rn-off" aria-hidden="true">${icon}</span>`;
   return `<nav class="roadnav" aria-label="${esc(L.road)} ${esc(c.road)}">
-    ${btn(prev,"prev",ic("prev"),L.prevCam)}
-    <span class="rn-pos num">${esc(L.road)} ${esc(c.road)} · ${i+1}/${list.length}</span>
-    ${btn(next,"next",ic("next"),L.nextCam)}
+    ${btn(prev,"prev",ic("prev"),L.prevCam,"←")}
+    <span class="rn-pos num">${i+1}/${list.length}</span>
+    ${btn(next,"next",ic("next"),L.nextCam,"→")}
   </nav>`;
+}
+
+function stepRoadCam(dir){
+  if(!current||current.type!=="cam") return;
+  const c=byId[current.id]; if(!c||c.road==null) return;
+  const list=DATA.cameras.filter(x=>x.road===c.road).sort((a,b)=>(a.sec-b.sec)||(a.dist-b.dist));
+  const i=list.findIndex(x=>x.id===c.id), target=list[i+dir];
+  if(target) openCam(target.id);
+}
+
+const TMS_CACHE={};
+function tmsRowHtml(d){
+  if(!d||d.speed==null) return "";
+  const L=T();
+  const [cls,st]=d.ratio!=null&&d.ratio<60?["jam",L.trJam]:d.ratio!=null&&d.ratio<82?["slow",L.trSlow]:["ok",L.trSmooth];
+  const vol=d.vol?`<span class="trend">${esc(L.vehH(Math.round(d.vol).toLocaleString(L.locale)))}</span>`:"";
+  return `<div class="kv" id="tmsrow"><dt>${ic("car")}${L.traffic}</dt><dd class="num"><span class="tr-st ${cls}">${esc(st)}</span>${Math.round(d.speed)} km/h${vol}</dd></div>`;
+}
+function loadTraffic(c){
+  if(!c.tms||slot!==24) return;
+  const cached=TMS_CACHE[c.tms];
+  const apply=d=>{
+    if(!current||current.type!=="cam"||current.id!==c.id||slot!==24) return;
+    const html=tmsRowHtml(d); if(!html) return;
+    const old=panelEl.querySelector("#tmsrow"); if(old) old.remove();
+    const read=panelEl.querySelector("#camread .read");
+    if(read){
+      const note=read.querySelector(".read-note");
+      if(note) note.insertAdjacentHTML("beforebegin",html);
+      else read.insertAdjacentHTML("beforeend",html);
+    }else{
+      const cr=panelEl.querySelector("#camread");
+      if(cr) cr.insertAdjacentHTML("afterbegin",`<dl class="read">${html}</dl>`);
+    }
+  };
+  if(cached&&Date.now()-cached.at<5*60e3) return apply(cached.d);
+  fetch(`https://tie.digitraffic.fi/api/tms/v1/stations/${c.tms}/data`).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j||!Array.isArray(j.sensorValues)) return;
+    const v={}; j.sensorValues.forEach(x=>v[x.name]=x.value);
+    const sp=[v.KESKINOPEUS_5MIN_LIUKUVA_SUUNTA1,v.KESKINOPEUS_5MIN_LIUKUVA_SUUNTA2].filter(x=>x!=null&&x>0);
+    const sp60=[v.KESKINOPEUS_60MIN_KIINTEA_SUUNTA1,v.KESKINOPEUS_60MIN_KIINTEA_SUUNTA2].filter(x=>x!=null&&x>0);
+    const speeds=sp.length?sp:sp60;
+    const speed=speeds.length?speeds.reduce((a,b)=>a+b,0)/speeds.length:null;
+    const vol=(v.OHITUKSET_60MIN_KIINTEA_SUUNTA1||0)+(v.OHITUKSET_60MIN_KIINTEA_SUUNTA2||0)||null;
+    const ratios=[v.KESKINOPEUS_5MIN_LIUKUVA_SUUNTA1_VVAPAAS1,v.KESKINOPEUS_5MIN_LIUKUVA_SUUNTA2_VVAPAAS2].filter(x=>x!=null&&x>0);
+    const ratio=ratios.length?Math.min(...ratios):null;
+    const d={speed,vol,ratio};
+    TMS_CACHE[c.tms]={at:Date.now(),d};
+    apply(d);
+  }).catch(()=>{});
 }
 
 function camReadings(c,s){
@@ -146,13 +210,13 @@ function camReadings(c,s){
   const row=(icon,label,val)=>`<div class="kv"><dt>${ic(icon)}${label}</dt><dd class="num">${val}</dd></div>`;
   if(s.k==="ei mittausta"&&!s.hourGap){
     if(c.cls) return "";
-    const note=`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`;
+    const msg=`<strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}`;
     if(!s.past&&c.why==="nosensor"&&(c.roadT!=null||c.airT!=null)){
       const rows=(c.roadT!=null?row("thermo",L.roadT,roadTempVal(c)):"")
         +(c.airT!=null?row("thermoSun",L.airT,num(c.airT," °C")):"");
-      return `<dl class="read">${rows}</dl>${note}`;
+      return `<dl class="read">${rows}<p class="read-note">${msg}</p></dl>`;
     }
-    return note;
+    return `<p class="empty">${msg}</p>`;
   }
   const thin=s.k==="ohut"&&!s.past;
   return `<dl class="read">
@@ -175,11 +239,10 @@ function renderCamPanel(c,s){
   panelEl.setAttribute("aria-label",nameOf(c));
   panelEl.innerHTML=`<div class="scroll">
     <div class="status" style="--c:${COLORS[s.k]}">${s.html}</div>
-    <div class="place"><h2 tabindex="-1">${esc(nameOf(c))}</h2>${placeLine(c)}</div>
+    <div class="place"><h2 tabindex="-1">${esc(nameOf(c))}</h2>${placeLine(c)}<div id="roadnav">${roadNavHtml(c)}</div></div>
     <figure class="shot"><button type="button" class="shotbtn" aria-label="${esc(T().openFull)}"><img alt="${esc(nameOf(c))}"><span class="zoomhint" aria-hidden="true">${ic("expand")}</span></button>
       <div id="campresets">${presetPillsHtml(c)}</div>
       <figcaption>${ic("camera")}${T().camNow}<span id="camview">${viewName(c)}</span><span id="camtime"></span><span id="shotcap"></span></figcaption></figure>
-    <div id="roadnav">${roadNavHtml(c)}</div>
     <div id="camread">${camReadings(c,s)}</div>
     <div id="camhist">${camHistory(c)}</div>
   </div>`;
@@ -209,15 +272,17 @@ function openCam(id,keep){
   const prevH=panelEl.classList.contains("on")?panelEl.getBoundingClientRect().height:0;
   const s=camStatus(c);
   if(same) updateCamPanel(c,s); else renderCamPanel(c,s);
+  syncPresetsEl();
   panelEl.classList.add("on"); panelEl.dataset.cam=id;
   if(!keep) panelShown();
   // puhelimessa alapaneeli mitoittuu sisällön mukaan: saman kameran selauksessa se ei lyhene
   panelEl.style.minHeight=isMobile()&&same?Math.max(prevH,panelEl.getBoundingClientRect().height)+"px":"";
   showShot(c,!same);
-  if(!s.past) camTime(c);
+  if(!s.past){ camTime(c); loadTraffic(c); }
   loadPresets(c).then(()=>{
     if(!current||current.type!=="cam"||current.id!==c.id) return;
     const prEl=panelEl.querySelector("#campresets"); if(prEl) prEl.innerHTML=presetPillsHtml(c);
+    syncPresetsEl();
     const vw=panelEl.querySelector("#camview"); if(vw) vw.innerHTML=viewName(c);
     if(lbOpen()) syncLightboxMeta();
   });
@@ -264,6 +329,39 @@ function openWarnList(only){
   panelEl.classList.add("on"); panelShown();
 }
 
+function openNotice(m){
+  if(!m) return;
+  if(current&&current.type==="warn") clearWarnSel();
+  current={type:"notice",m}; select(""); syncCamUrl(null); refreshWarn();
+  if(isMobile()) setCollapsed(true);
+  const L=T(), rawTitle=m.t[LANG]||m.t.fi||"", desc=m.d[LANG]||m.d.fi||"";
+  const title=rawTitle.replace(/\.\s*(Tietyö|Roadwork)\.?$/i,"").trim()||rawTitle;
+  const kind=m.type==="work"?L.roadWork:L.trafficNotice;
+  const col=m.type==="work"?"#f59e0b":"#fb7185";
+  const span=m.start?(fmtTime(m.start)+(m.end?` – ${fmtTime(m.end)}`:"")):"";
+  const kx=111.32*Math.cos(m.lat*Math.PI/180), ky=110.57;
+  const near=(DATA?.cameras||[]).map(c=>({c,d:Math.hypot((c.lon-m.lon)*kx,(c.lat-m.lat)*ky)}))
+    .filter(x=>x.d<=15).sort((a,b)=>a.d-b.d).slice(0,3);
+  const nearHtml=near.length?`<div class="ncams"><h3>${L.nearCams}</h3><ul class="list">${near.map(({c,d})=>{
+    const k=clsAt(c);
+    return `<li><button type="button" class="item" data-ncam="${esc(c.id)}"><span class="sw" style="background:${COLORS[k]}"></span>
+      <span><b>${esc(nameOf(c))}</b><small>${L.cls[k]}</small></span><span class="km num">${num(d," km")}</span></button></li>`;
+  }).join("")}</ul></div>`:"";
+  panelEl.setAttribute("aria-label",kind);
+  delete panelEl.dataset.cam;
+  panelEl.innerHTML=`<div class="scroll">
+    <div class="status" style="--c:${col}"><div><b class="long">${esc(title)}</b><small><span>${ic("tri")}${esc(kind)}</span></small></div>
+      <button class="x" aria-label="${L.close}">${X}</button></div>
+    <div class="read ncard">
+      ${span?`<div class="kv"><dt>${ic("clock")}${L.valid}</dt><dd class="num nspan">${esc(span)}</dd></div>`:""}
+      ${desc?`<p class="ndesc">${esc(desc)}</p>`:""}
+    </div>
+    ${nearHtml}
+    <div class="wpanel nfoot"><p class="src">${L.trafficSrc} · <a class="btn" href="https://liikennetilanne.fintraffic.fi/" target="_blank" rel="noopener">${L.trafficMore}${ic("ext")}</a></p></div>
+  </div>`;
+  panelEl.classList.add("on"); panelShown();
+}
+
 /* ---------- sulkeminen: painike, Esc ja pyyhkäisy alas (puhelin) ---------- */
 addEventListener("keydown",e=>{
   if(lbOpen()){
@@ -272,7 +370,13 @@ addEventListener("keydown",e=>{
     else if(e.key==="ArrowRight"){ e.preventDefault(); stepPreset(1); }
     return;
   }
-  if(e.key==="Escape") closePanel();
+  if(e.key==="Escape") return closePanel();
+  if((e.key==="ArrowLeft"||e.key==="ArrowRight")&&current&&current.type==="cam"){
+    const ae=document.activeElement, tag=(ae?.tagName||"").toLowerCase();
+    if(tag==="input"||tag==="textarea"||tag==="select"||ae?.getAttribute("role")==="tab") return;
+    e.preventDefault();
+    stepRoadCam(e.key==="ArrowLeft"?-1:1);
+  }
 });
 panelEl.addEventListener("click",e=>{
   if(e.target.closest(".x")) return closePanel();
@@ -300,6 +404,8 @@ panelEl.addEventListener("click",e=>{
   }
   const rn=e.target.closest(".roadnav button[data-cam]");
   if(rn) return openCam(rn.dataset.cam);
+  const nc=e.target.closest("button[data-ncam]");
+  if(nc) return openCam(nc.dataset.ncam);
   if(e.target.closest(".shotbtn")) return openLightbox();
   const pill=e.target.closest(".pill[data-pid]");
   if(pill&&current&&current.type==="cam") selectPreset(byId[current.id],pill.dataset.pid);

@@ -5,7 +5,17 @@ function renderData(){
   const at=DATA.live||DATA.run, u=document.getElementById("updated"), today=new Date(at).toDateString()===new Date().toDateString();
   u.textContent=isMobile()&&today?fmtClock(at):fmt(at,{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}); u.dateTime=at;
   const worse=worsening(), bd=document.querySelector("#tab-worse .badge"); bd.hidden=!worse.length; bd.textContent=worse.length||"";
-  renderFavCams(); renderLegend(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+  renderFavCams(); renderLegend(); renderLayers(); renderWarnings(); renderWorse(worse); renderRoads(); renderTimeline(); renderRoute();
+}
+function renderLayers(){
+  const el=document.getElementById("layers"); if(!el) return;
+  const L=T();
+  el.innerHTML=`<div class="layer-row">
+    <button type="button" class="lchip" id="t-maint" aria-pressed="${maintOn}">${ic("truck")}<span>${L.layerMaint}</span></button>
+    <button type="button" class="lchip" id="t-work" aria-pressed="${workOn}">${ic("cone")}<span>${L.layerWork}</span></button>
+  </div>${maintOn?`<div class="mkey"><span><i style="background:#38bdf8"></i>${L.maintSalt}</span><span><i style="background:#60a5fa"></i>${L.maintPlow}</span><span><i style="background:#f59e0b"></i>${L.maintSand}</span></div>`:""}`;
+  el.querySelector("#t-maint").onclick=()=>{ maintOn=!maintOn; renderLayers(); if(typeof syncMaint==="function") syncMaint(); };
+  el.querySelector("#t-work").onclick=()=>{ workOn=!workOn; renderLayers(); if(typeof syncTraffic==="function") syncTraffic(); };
 }
 function renderFavCams(){
   const el=document.getElementById("favcams"); if(!el) return;
@@ -20,6 +30,7 @@ function renderFavCams(){
         ${t!=null?`<span class="ft num">${num(t,"\u00a0°C")}</span>`:""}</button>`;
     }).join("")}</div>`;
   el.querySelectorAll(".favchip").forEach(b=>b.onclick=()=>{ if(isMobile()) setCollapsed(true); openCam(b.dataset.id); });
+  initDragScroll(el.querySelector(".favchips"));
 }
 function renderAll(){
   document.documentElement.lang=LANG; document.title=T().title;

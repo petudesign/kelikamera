@@ -129,10 +129,102 @@ def traffic_warnings() -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ traffic --
+MAINT_TASKS = {
+    "SALTING": "salt",
+    "PREWETTED_SALTING": "salt",
+    "PLOUGHING_AND_SLUSH_REMOVAL": "plow",
+    "LINE_SANDING": "sand",
+    "SPOT_SANDING": "sand",
+}
+
+
+def tms_stations() -> list[dict]:
+    """LAM-liikennemittausasemat (id, lat, lon), vain toiminnassa olevat."""
+    out = []
+    for f in get_json("/api/tms/v1/stations").get("features", []):
+        coords = (f.get("geometry") or {}).get("coordinates") or []
+        p = f.get("properties") or {}
+        if p.get("collectionStatus") != "GATHERING":
+            continue
+        if len(coords) >= 2 and p.get("id") is not None:
+            out.append({"id": int(p["id"]), "lon": float(coords[0]), "lat": float(coords[1])})
+    return out
+
+
+def nearest_tms(lat: float, lon: float, stations: list[dict]) -> tuple[int | None, float | None]:
+    best_id, best_d = None, MAX_KM
+    for s in stations:
+        if abs(s["lat"] - lat) > 0.06 or abs(s["lon"] - lon) > 0.12:
+            continue
+        d = km(lat, lon, s["lat"], s["lon"])
+        if d <= best_d:
+            best_id, best_d = s["id"], d
+    return best_id, (round(best_d, 1) if best_id is not None else None)
+
+
+def traffic_messages() -> list[dict]:
+    """Voimassa olevat tietyöt ja liikennetiedotteet tiivistettynä karttapisteiksi."""
+    d = get_json("/api/traffic-message/v1/messages?inactiveHours=0&includeAreaGeometry=false"
+                 "&situationType=ROAD_WORK&situationType=TRAFFIC_ANNOUNCEMENT")
+    out = []
+    for f in d.get("features", []):
+        coords = (f.get("geometry") or {}).get("coordinates")
+        if not coords:
+            continue
+        pt = coords
+        while isinstance(pt, list) and pt and isinstance(pt[0], list):
+            pt = pt[len(pt) // 2] if len(pt) > 2 else pt[0]
+        if not isinstance(pt, list) or len(pt) < 2:
+            continue
+        p = f.get("properties") or {}
+        anns = p.get("announcements") or []
+        fi = next((a for a in anns if a.get("language") == "fi"), anns[0] if anns else {})
+        en = next((a for a in anns if a.get("language") == "en"), {})
+        title_fi = (fi.get("title") or "").strip()
+        if not title_fi:
+            continue
+        td = fi.get("timeAndDuration") or {}
+        out.append({
+            "id": p.get("situationId"),
+            "type": "work" if p.get("situationType") == "ROAD_WORK" else "notice",
+            "lon": round(float(pt[0]), 4), "lat": round(float(pt[1]), 4),
+            "t": {"fi": title_fi, "en": (en.get("title") or title_fi).strip()},
+            "d": {"fi": (fi.get("comment") or (fi.get("location") or {}).get("description") or "").strip()[:260],
+                  "en": (en.get("comment") or (en.get("location") or {}).get("description") or "").strip()[:260]},
+            "start": td.get("startTime"),
+            "end": td.get("endTime"),
+        })
+    return out
+
+
+def maintenance_routes(started: datetime) -> list[list]:
+    """Viimeisen 3 tunnin talvikunnossapito (suolaus, auraus, hiekoitus) tiivistettyinä viivoina."""
+    frm = (started - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    d = get_json(f"/api/maintenance/v1/tracking/routes?endFrom={frm}&xMin=19&yMin=59.5&xMax=32&yMax=70.5")
+    out = []
+    for f in d.get("features", []):
+        p = f.get("properties") or {}
+        kind = next((MAINT_TASKS[t] for t in (p.get("tasks") or []) if t in MAINT_TASKS), None)
+        if not kind:
+            continue
+        g = f.get("geometry") or {}
+        cs = g.get("coordinates") or []
+        if g.get("type") == "LineString" and len(cs) >= 2:
+            pts = [cs[0], cs[len(cs) // 2], cs[-1]] if len(cs) > 2 else cs
+            out.append([kind, [[round(x[0], 3), round(x[1], 3)] for x in pts]])
+    return out
+
+
 # --------------------------------------------------------------------- main --
 def fetch_cameras(started: datetime) -> tuple[list[dict], set[int]]:
     cam_meta = {c["id"]: c for c in camera_meta(None)}
     coords = {s["id"]: (s["lon"], s["lat"]) for s in weather_stations()}
+    try:
+        tms = tms_stations()
+    except Exception as e:
+        print(f"  ! LAM-asemat: {e}", file=sys.stderr)
+        tms = []
     measured = {p["id"]: p.get("measuredTime")
                 for st in get_json("/api/weathercam/v1/stations/data")["stations"] for p in st.get("presets", [])}
     stations = station_index(get_json("/api/weather/v2/stations/data"))
@@ -161,6 +253,7 @@ def fetch_cameras(started: datetime) -> tuple[list[dict], set[int]]:
         near = d is not None and d <= MAX_KM
         cls = lab["class"] if near else None
         m = cam_meta.get(item["camera"], {})
+        tms_id, tms_km = nearest_tms(item["lat"], item["lon"], tms) if tms else (None, None)
         if near and lab.get("optical_code") is not None:
             need.add(item["weatherStation"])
         cams.append({
@@ -178,6 +271,7 @@ def fetch_cameras(started: datetime) -> tuple[list[dict], set[int]]:
             "cls": cls,
             "why": None if cls else ("far" if d and d > MAX_KM else "nosensor"),
             "st": item.get("weatherStation"), "km": round(d, 1) if d is not None else None,
+            "tms": tms_id, "tmsKm": tms_km,
             "friction": r2(lab.get("friction")) if near else None,
             "water": r2(lab.get("water_mm")) if near else None,
             "snow": r2(lab.get("snow_mm")) if near else None,
@@ -242,10 +336,28 @@ def write_outputs(started: datetime, slots: list[datetime], cams: list[dict]) ->
          "source": "Ilmatieteen laitos, CC BY 4.0", "warnings": warns},
         ensure_ascii=False, separators=(",", ":")))
 
+    try:
+        msgs = traffic_messages()
+    except Exception as e:
+        print(f"  ! liikennetiedotteet: {e}", file=sys.stderr)
+        msgs = []
+    (SITE_DATA / "traffic.json").write_text(json.dumps(
+        {"fetched": datetime.now(timezone.utc).isoformat(), "messages": msgs},
+        ensure_ascii=False, separators=(",", ":")))
+
+    try:
+        maint = maintenance_routes(started)
+    except Exception as e:
+        print(f"  ! kunnossapito: {e}", file=sys.stderr)
+        maint = []
+    (SITE_DATA / "maintenance.json").write_text(json.dumps(
+        {"fetched": datetime.now(timezone.utc).isoformat(), "hours": 3, "lines": maint},
+        ensure_ascii=False, separators=(",", ":")))
+
     with_hist = sum(1 for c in cams if c.get("h"))
-    print(f"{len(cams)} kameraa, {with_hist} historialla, {len(warns)} liikennesäävaroitusta")
+    print(f"{len(cams)} kameraa, {with_hist} historialla, {len(warns)} varoitusta, {len(msgs)} tiedotetta, {len(maint)} aurauspätkää")
     print(counts)
-    for f in ("latest.json", "warnings.json"):
+    for f in ("latest.json", "warnings.json", "traffic.json", "maintenance.json"):
         print(f"  site/data/{f}: {(SITE_DATA / f).stat().st_size / 1e3:.0f} kt")
 
 

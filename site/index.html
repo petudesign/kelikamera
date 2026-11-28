@@ -13,7 +13,7 @@
 <!-- fontti ja MapLibre omasta reposta: kävijän IP-osoite ei mene Googlelle eikä CDN:lle (GDPR) -->
 <link rel="preload" href="vendor/geist/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=13192c3d86">
+<link rel="stylesheet" href="css/app.css?v=e5da44ed09">
 </head>
 <body>
 <div id="map" aria-label=""></div>
@@ -39,6 +39,7 @@
     <div class="favcams" id="favcams" hidden></div>
     <details class="explain"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span data-t="explainSum">Keli tiesääasemalta (&lt; 5 km)</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><p class="note" data-t="explain">Värit ovat tiesääaseman mittaama keli alle 5 km päässä kamerasta. Kuudelta kamerasta kymmenestä mittaus puuttuu: niille opetan tekoälyä arvioimaan kelin kuvasta.</p></details>
     <ul class="rows" id="rows"></ul>
+    <div class="layers" id="layers"></div>
     <div class="sec" id="warnsec"></div>
     <p class="credits"><span data-t="data"></span> <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
     <details class="privacy"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span data-t="privacySum"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><dl id="privacyList"></dl></details>
@@ -91,15 +92,15 @@
 
 
 <script defer src="vendor/maplibre/maplibre-gl.js"></script>
-<script defer src="js/i18n.js?v=0721452e34"></script>
-<script defer src="js/core.js?v=bde9a22907"></script>
-<script defer src="js/map.js?v=b1d36ea12b"></script>
+<script defer src="js/i18n.js?v=d0738a781e"></script>
+<script defer src="js/core.js?v=3bf10d2695"></script>
+<script defer src="js/map.js?v=71a89c2a17"></script>
 <script defer src="js/combobox.js?v=4b82ad5c15"></script>
-<script defer src="js/sidebar.js?v=06f364b0fa"></script>
+<script defer src="js/sidebar.js?v=34a2ac1174"></script>
 <script defer src="js/route.js?v=15552bad72"></script>
 <script defer src="js/timeline.js?v=c7da6680ec"></script>
 <script defer src="js/camera-image.js?v=5c9722bf5d"></script>
-<script defer src="js/panel.js?v=4343807dd4"></script>
+<script defer src="js/panel.js?v=41eb25fb7a"></script>
 <script defer src="js/lightbox.js?v=442b4f149f"></script>
 <script defer src="js/live.js?v=2ba514108c"></script>
 <script defer src="js/main.js?v=d9af5c7722"></script>

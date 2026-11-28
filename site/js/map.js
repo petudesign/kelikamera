@@ -85,9 +85,32 @@ function addLayers(){
   map.addLayer({id:"warn-fill",type:"fill",source:"warn",filter:warnFilter(),paint:{"fill-color":v("--warn"),"fill-opacity":.08}});
   map.addLayer({id:"warn-line",type:"line",source:"warn",filter:warnFilter(),paint:{"line-color":v("--warn"),"line-width":1.2,"line-opacity":.7,"line-dasharray":[3,2]}});
   map.addLayer({id:"warn-sel",type:"line",source:"warn",filter:["==",["get","i"],-1],paint:{"line-color":v("--warn"),"line-width":2.5}});
+  map.addSource("maint",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
+  map.addLayer({id:"maint",type:"line",source:"maint",layout:{"line-join":"round","line-cap":"round",visibility:"none"},
+    paint:{"line-color":["match",["get","k"],"salt","#38bdf8","plow","#60a5fa","sand","#f59e0b","#38bdf8"],"line-width":["interpolate",["linear"],["zoom"],5,1.6,10,3.2],"line-opacity":.78}});
   map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
   map.addLayer({id:"route-case",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#0a0a0a","line-width":7}});
   map.addLayer({id:"route",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c9d3df","line-width":3}});
+  function addTriIcon(id,fill){
+    const s=44, c=document.createElement("canvas"); c.width=s; c.height=s;
+    const x=c.getContext("2d");
+    x.beginPath(); x.moveTo(s/2,5); x.lineTo(s-5,s-7); x.lineTo(5,s-7); x.closePath();
+    x.lineJoin="round"; x.lineWidth=6; x.strokeStyle="#0a0a0a"; x.stroke();
+    x.fillStyle=fill; x.fill();
+    x.fillStyle="#0a0a0a";
+    x.fillRect(s/2-1.8,17,3.6,10);
+    x.beginPath(); x.arc(s/2,31.5,2.1,0,Math.PI*2); x.fill();
+    map.addImage(id,x.getImageData(0,0,s,s),{pixelRatio:2});
+  }
+  addTriIcon("tri-work","#f59e0b");
+  addTriIcon("tri-notice","#fb7185");
+  map.addSource("traffic",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
+  map.addLayer({id:"traffic-work",type:"symbol",source:"traffic",minzoom:8,filter:["==",["get","type"],"work"],
+    layout:{visibility:"none","icon-image":"tri-work","icon-size":["interpolate",["linear"],["zoom"],8,0.78,11,1.02],
+      "icon-allow-overlap":true,"icon-ignore-placement":true}});
+  map.addLayer({id:"traffic-notice",type:"symbol",source:"traffic",filter:["==",["get","type"],"notice"],
+    layout:{visibility:"none","icon-image":"tri-notice","icon-size":["interpolate",["linear"],["zoom"],5,0.76,10,1.08],
+      "icon-allow-overlap":true,"icon-ignore-placement":true}});
   map.addSource("cams",{type:"geojson",data:geojson(),maxzoom:11,buffer:32});
   map.addLayer({id:"cams-halo",type:"circle",source:"cams",filter:["==",["get","k"],"jää/kuura"],
     paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,9,10,18],"circle-color":COLORS["jää/kuura"],"circle-opacity":.22,"circle-blur":.6}});
@@ -106,6 +129,14 @@ function addLayers(){
   map.on("mouseenter","cams",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;
     tip.setLngLat(e.lngLat).setHTML(`<span class="sw" style="background:${COLORS[p.k]}"></span>${esc(nameOf(byId[p.id]))}<span style="color:var(--text-2)">${T().cls[p.k]}</span>`).addTo(map)});
   map.on("mouseleave","cams",()=>{map.getCanvas().style.cursor="";tip.remove()});
+  const showTrafficTip=e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties, m=TRAFFIC&&TRAFFIC[p.i];
+    if(!m) return;
+    const col=m.type==="work"?"#f59e0b":"#fb7185";
+    tip.setLngLat(e.lngLat).setHTML(`<span class="sw" style="background:${col}"></span>${esc(m.t[LANG]||m.t.fi)}`).addTo(map)};
+  ["traffic-notice","traffic-work"].forEach(l=>{
+    map.on("mouseenter",l,showTrafficTip);
+    map.on("mouseleave",l,()=>{map.getCanvas().style.cursor="";tip.remove()});
+  });
   map.on("click",e=>{
     // kosketuksessa 22 px säde (44 px kosketusalue), hiirellä 8 px; lähin piste voittaa
     const r=matchMedia("(pointer: coarse)").matches?22:8, {x,y}=e.point;
@@ -115,11 +146,41 @@ function addLayers(){
       const best=hits.reduce((a,b)=>d(b)<d(a)?b:a);
       if(d(best)<=r*r) return openCam(best.properties.id);
     }
+    if(workOn){
+      const th=map.queryRenderedFeatures([[x-r,y-r],[x+r,y+r]],{layers:["traffic-notice","traffic-work"]});
+      if(th.length&&TRAFFIC&&TRAFFIC[th[0].properties.i]) return openNotice(TRAFFIC[th[0].properties.i]);
+    }
     const w=map.queryRenderedFeatures(e.point,{layers:["warn-fill"]})[0];
     if(w) return openWarn(w.properties.i);   // sama alue uudelleen sulkee (openWarn)
     closePanel();
   });
   applyFilter();
+}
+
+function syncMaint(){
+  if(!ready()) return;
+  map.setLayoutProperty("maint","visibility",maintOn?"visible":"none");
+  if(!maintOn||MAINT) return;
+  fetch("data/maintenance.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(!d||!Array.isArray(d.lines)) return;
+    MAINT=d.lines;
+    map.getSource("maint").setData({type:"FeatureCollection",features:MAINT.map(([k,cs])=>({
+      type:"Feature",geometry:{type:"LineString",coordinates:cs},properties:{k}
+    }))});
+  }).catch(()=>{});
+}
+function syncTraffic(){
+  if(!ready()) return;
+  const vis=workOn?"visible":"none";
+  ["traffic-notice","traffic-work"].forEach(l=>map.setLayoutProperty(l,"visibility",vis));
+  if(!workOn||TRAFFIC) return;
+  fetch("data/traffic.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(!d||!Array.isArray(d.messages)) return;
+    TRAFFIC=d.messages;
+    map.getSource("traffic").setData({type:"FeatureCollection",features:TRAFFIC.map((m,i)=>({
+      type:"Feature",geometry:{type:"Point",coordinates:[m.lon,m.lat]},properties:{i,type:m.type}
+    }))});
+  }).catch(()=>{});
 }
 // Nosta kaupunkinimet ja päätienumerot kamerapisteiden yläpuolelle ja paranna luettavuutta hienovaraisella halolla.
 function elevateLabels(){
