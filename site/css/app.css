@@ -70,9 +70,11 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .tabpanel{overflow:auto;flex:1 1 auto;min-height:0;padding-bottom:8px}
 .key.loading #warnsec,.key.loading .credits,.key.loading .privacy{visibility:hidden}
 @media (min-width:721px){#rows:empty{min-height:288px}}
-.fold{display:none;width:30px;height:28px;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair)}
-.fold svg{transition:transform .2s var(--ease-out);transform:rotate(180deg)}
-.key.collapsed .fold svg{transform:none}
+.fold{display:none;width:34px;height:34px;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair)}
+.fold .ic{width:16px;height:16px;vertical-align:0}
+.fold .ic-find{display:none}
+.key.collapsed .fold .ic-find{display:block}
+.key.collapsed .fold .ic-close{display:none}
 .key.collapsed .tabpanel{display:none}
 .key.collapsed .tabs{box-shadow:none}
 .key.collapsed .tabs button[aria-selected="true"]{color:var(--text-3)}
@@ -286,7 +288,7 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .panel{position:fixed;right:16px;top:16px;bottom:16px;width:368px;z-index:6;display:flex;flex-direction:column;overflow:hidden;
   transform:translateX(calc(100% + 32px));transition:transform .2s var(--ease-out)}
 .panel.on{transform:none;transition-duration:.32s}
-.panel .scroll{overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--surface-3) transparent}
+.panel .scroll{overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--surface-3) transparent}
 /* tilaotsikko: luokan väri hehkuu yläreunasta, ei paksua reunapalkkia */
 .status{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 12px 14px 18px;
   background:linear-gradient(180deg,color-mix(in srgb,var(--c) 13%,transparent),color-mix(in srgb,var(--c) 0%,transparent) 100%);box-shadow:inset 0 -1px 0 var(--line)}
@@ -436,8 +438,14 @@ body:has(.panel.on) .maplibregl-ctrl-bottom-right{right:390px}
 .maplibregl-popup-content{display:flex;align-items:center;gap:7px;background:var(--surface-2);color:var(--text);border-radius:999px;padding:5px 11px 5px 9px;font-weight:500;font:12.5px "Geist",sans-serif;box-shadow:var(--elev-3)}
 .maplibregl-popup-tip{display:none}
 
+@media (pointer:coarse){
+  input,textarea,select{font-size:16px}
+}
 @media (max-width:720px){
   .key{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:auto;max-height:52vh;max-height:52dvh;border-radius:var(--r-xl)}
+  .key.search-only #p-map>*:not(.camfind){display:none}
+  .key.search-only #p-map{padding-bottom:6px}
+  .key.search-only .camfind{padding-bottom:6px}
   .fold{display:grid}
   .rows{display:grid;grid-template-columns:1fr 1fr;padding:4px}
   .rows li.sep{grid-column:1/-1;margin-top:4px;padding-top:4px}
@@ -454,12 +462,16 @@ body:has(.panel.on) .maplibregl-ctrl-bottom-right{right:390px}
   .warnsum{display:flex}
   .timeline{bottom:calc(8px + env(safe-area-inset-bottom,0px));width:calc(100% - 16px);transition:transform .28s var(--ease-out),opacity .2s ease}
   body:has(.panel.on) .timeline{opacity:0;pointer-events:none;transform:translate(-50%,calc(100% + 24px))}
-  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:72vh;max-height:72dvh;border-radius:18px 18px 0 0;
-    padding-bottom:env(safe-area-inset-bottom,0px);transition:transform .45s var(--ease-drawer);
+  .panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:62vh;max-height:62dvh;border-radius:18px 18px 0 0;
+    transition:transform .45s var(--ease-drawer);
     transform:translateY(105%);z-index:7;box-shadow:0 0 0 1px var(--line),var(--lift),0 -12px 40px rgba(0,0,0,.55)}
+  .panel .scroll{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
   .panel.on{transform:none;transition-duration:.45s}
   .panel::before{content:"";position:absolute;left:50%;top:7px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:rgba(255,255,255,.22);z-index:1}
-  .status{padding-top:20px}
+  .status{padding:18px 16px 12px}
+  .place{padding:10px 16px 8px}
+  .shot{margin:0 16px}
+  .read,.empty{margin:12px 16px 0}
   .sharebtn,.favbtn,.x{width:44px;height:44px}
   .rn-btn{min-height:40px}
   .ex-chip{min-height:38px;padding:6px 12px}

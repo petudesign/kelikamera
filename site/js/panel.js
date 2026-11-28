@@ -185,7 +185,12 @@ function loadTraffic(c){
       else read.insertAdjacentHTML("beforeend",html);
     }else{
       const cr=panelEl.querySelector("#camread");
-      if(cr) cr.insertAdjacentHTML("afterbegin",`<dl class="read">${html}</dl>`);
+      const emp=cr&&cr.querySelector(".empty");
+      if(emp){
+        const noteHtml=`<p class="read-note">${emp.innerHTML}</p>`;
+        emp.remove();
+        cr.insertAdjacentHTML("afterbegin",`<dl class="read">${html}${noteHtml}</dl>`);
+      }else if(cr) cr.insertAdjacentHTML("afterbegin",`<dl class="read">${html}</dl>`);
     }
   };
   if(cached&&Date.now()-cached.at<5*60e3) return apply(cached.d);

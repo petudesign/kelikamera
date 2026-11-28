@@ -13,7 +13,7 @@
 <!-- fontti ja MapLibre omasta reposta: kävijän IP-osoite ei mene Googlelle eikä CDN:lle (GDPR) -->
 <link rel="preload" href="vendor/geist/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=e5da44ed09">
+<link rel="stylesheet" href="css/app.css?v=100397b28c">
 </head>
 <body>
 <div id="map" aria-label=""></div>
@@ -22,7 +22,7 @@
   <header>
     <div class="brand"><svg class="mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M6.5 2.5h11a4 4 0 0 1 4 4v11a4 4 0 0 1-4 4h-1.2L14 14.9a5.2 5.2 0 1 0-4 0l-2.3 6.6H6.5a4 4 0 0 1-4-4v-11a4 4 0 0 1 4-4Z" fill="currentColor"/><circle cx="12" cy="10.2" r="2.5" fill="var(--warn)"/></svg><h1>Kelikamera</h1></div>
     <div style="display:flex;align-items:center;gap:8px"><time id="updated">–</time>
-      <button class="fold" id="fold" aria-label="Pienennä" aria-expanded="true" aria-controls="p-map p-route p-worse p-roads"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button>
+      <button class="fold" id="fold" type="button" aria-label="Hae kameraa" aria-expanded="false" aria-controls="p-map p-route p-worse p-roads"><svg class="ic ic-find" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><svg class="ic ic-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       <div class="lang" role="group" aria-label="Kieli / Language">
         <button data-lang="fi" aria-pressed="true">FI</button><button data-lang="en" aria-pressed="false">EN</button></div></div>
   </header>
@@ -41,7 +41,7 @@
     <ul class="rows" id="rows"></ul>
     <div class="layers" id="layers"></div>
     <div class="sec" id="warnsec"></div>
-    <p class="credits"><span data-t="data"></span> <a href="https://www.digitraffic.fi/" target="_blank" rel="noopener">Fintraffic / digitraffic.fi</a>, <a href="https://www.ilmatieteenlaitos.fi/varoitukset" target="_blank" rel="noopener" data-t="fmi"></a> · CC BY 4.0 · © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap · Natural Earth</p>
+    <details class="privacy"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg><span data-t="sourcesSum">Datalähteet · Fintraffic, FMI, OSM</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><dl id="sourcesList"></dl></details>
     <details class="privacy"><summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span data-t="privacySum"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary><dl id="privacyList"></dl></details>
   </div>
   <div class="tabpanel" id="p-route" role="tabpanel" aria-labelledby="tab-route" hidden>
@@ -92,15 +92,15 @@
 
 
 <script defer src="vendor/maplibre/maplibre-gl.js"></script>
-<script defer src="js/i18n.js?v=d0738a781e"></script>
+<script defer src="js/i18n.js?v=6926eca8ac"></script>
 <script defer src="js/core.js?v=3bf10d2695"></script>
 <script defer src="js/map.js?v=71a89c2a17"></script>
 <script defer src="js/combobox.js?v=4b82ad5c15"></script>
-<script defer src="js/sidebar.js?v=34a2ac1174"></script>
+<script defer src="js/sidebar.js?v=511e3119f3"></script>
 <script defer src="js/route.js?v=15552bad72"></script>
 <script defer src="js/timeline.js?v=c7da6680ec"></script>
 <script defer src="js/camera-image.js?v=5c9722bf5d"></script>
-<script defer src="js/panel.js?v=41eb25fb7a"></script>
+<script defer src="js/panel.js?v=5fafaf556c"></script>
 <script defer src="js/lightbox.js?v=442b4f149f"></script>
 <script defer src="js/live.js?v=2ba514108c"></script>
 <script defer src="js/main.js?v=d9af5c7722"></script>

@@ -36,8 +36,9 @@ function renderAll(){
   document.documentElement.lang=LANG; document.title=T().title;
   document.getElementById("map").setAttribute("aria-label",T().mapLabel);
   document.getElementById("slider").setAttribute("aria-label",LANG==="en"?"Timeline, last 24 hours":"Aikajana, viimeiset 24 tuntia");
-  foldBtn.setAttribute("aria-label",keyEl.classList.contains("collapsed")?T().expand:T().collapse);
+  foldBtn.setAttribute("aria-label",keyEl.classList.contains("collapsed")?T().camSearchLabel:T().close);
   document.querySelectorAll("[data-t]").forEach(el=>el.textContent=T()[el.dataset.t]);
+  document.getElementById("sourcesList").innerHTML=T().sourcesItems.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
   document.getElementById("privacyList").innerHTML=T().privacyItems.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
   document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
   // tekstit päivitetään vain, jos ne muuttuvat: uudelleenpiirto laskettaisiin uudeksi LCP:ksi
@@ -175,10 +176,25 @@ function renderRoads(){
 }
 
 const keyEl=document.getElementById("key"), foldBtn=document.getElementById("fold");
-function setCollapsed(c){ keyEl.classList.toggle("collapsed",c); foldBtn.setAttribute("aria-expanded",String(!c));
-  foldBtn.setAttribute("aria-label",c?T().expand:T().collapse);
-  if(!map.loaded()) return; if(routeOn) fitRoute(); else if(road==null) lockToFinland(); }
-foldBtn.onclick=()=>setCollapsed(!keyEl.classList.contains("collapsed"));
+function setCollapsed(c){
+  keyEl.classList.toggle("collapsed",c);
+  if(c) keyEl.classList.remove("search-only");
+  foldBtn.setAttribute("aria-expanded",String(!c));
+  foldBtn.setAttribute("aria-label",c?T().camSearchLabel:T().close);
+  if(!map.loaded()) return; if(routeOn) fitRoute(); else if(road==null) lockToFinland();
+}
+foldBtn.onclick=()=>{
+  if(keyEl.classList.contains("collapsed")){
+    document.querySelectorAll('[role="tab"]').forEach(x=>{const on=x.id==="tab-map";x.setAttribute("aria-selected",on);
+      document.getElementById(x.getAttribute("aria-controls")).hidden=!on});
+    syncTabIdx();
+    keyEl.classList.add("search-only");
+    setCollapsed(false);
+    const inp=document.getElementById("camq"); if(inp) inp.focus();
+  }else{
+    setCollapsed(true);
+  }
+};
 if(isMobile()){ keyEl.classList.add("collapsed"); foldBtn.setAttribute("aria-expanded","false"); }
 // Välilehdet: nuolinäppäimet ja kiertävä tabindex (ARIA tabs -malli).
 const TABS=[...document.querySelectorAll('[role="tab"]')];
@@ -188,7 +204,9 @@ TABS.forEach((t,i)=>t.addEventListener("keydown",e=>{
   e.preventDefault(); const n=TABS[(j+TABS.length)%TABS.length]; n.focus(); n.click();}));
 document.querySelectorAll('[role="tab"]').forEach(t=>t.onclick=()=>{
   const active=t.getAttribute("aria-selected")==="true";
-  if(active&&!keyEl.classList.contains("collapsed")){ setCollapsed(true); return; }
+  const wasSearchOnly=keyEl.classList.contains("search-only");
+  keyEl.classList.remove("search-only");
+  if(active&&!keyEl.classList.contains("collapsed")&&!wasSearchOnly){ setCollapsed(true); return; }
   if(keyEl.classList.contains("collapsed")) setCollapsed(false);
   document.querySelectorAll('[role="tab"]').forEach(x=>{const on=x===t;x.setAttribute("aria-selected",on);
     document.getElementById(x.getAttribute("aria-controls")).hidden=!on});
