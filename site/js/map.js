@@ -87,7 +87,7 @@ function addLayers(){
   map.addLayer({id:"warn-sel",type:"line",source:"warn",filter:["==",["get","i"],-1],paint:{"line-color":v("--warn"),"line-width":2.5}});
   map.addSource("maint",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
   map.addLayer({id:"maint",type:"line",source:"maint",layout:{"line-join":"round","line-cap":"round",visibility:"none"},
-    paint:{"line-color":["match",["get","k"],"salt","#38bdf8","plow","#60a5fa","sand","#f59e0b","#38bdf8"],"line-width":["interpolate",["linear"],["zoom"],5,1.6,10,3.2],"line-opacity":.78}});
+    paint:{"line-color":["match",["get","k"],"salt","#ec4899","plow","#22d3ee","sand","#f59e0b","#ec4899"],"line-width":["interpolate",["linear"],["zoom"],5,2,10,3.6],"line-opacity":.88}});
   map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
   map.addLayer({id:"route-case",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#0a0a0a","line-width":7}});
   map.addLayer({id:"route",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c9d3df","line-width":3}});

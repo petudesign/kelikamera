@@ -13,7 +13,7 @@ function renderLayers(){
   el.innerHTML=`<div class="layer-row">
     <button type="button" class="lchip" id="t-maint" aria-pressed="${maintOn}">${ic("truck")}<span>${L.layerMaint}</span></button>
     <button type="button" class="lchip" id="t-work" aria-pressed="${workOn}">${ic("cone")}<span>${L.layerWork}</span></button>
-  </div>${maintOn?`<div class="mkey"><span><i style="background:#38bdf8"></i>${L.maintSalt}</span><span><i style="background:#60a5fa"></i>${L.maintPlow}</span><span><i style="background:#f59e0b"></i>${L.maintSand}</span></div>`:""}`;
+  </div>${maintOn?`<div class="mkey"><span><i style="background:#ec4899"></i>${L.maintSalt}</span><span><i style="background:#22d3ee"></i>${L.maintPlow}</span><span><i style="background:#f59e0b"></i>${L.maintSand}</span></div>`:""}`;
   el.querySelector("#t-maint").onclick=()=>{ maintOn=!maintOn; renderLayers(); if(typeof syncMaint==="function") syncMaint(); };
   el.querySelector("#t-work").onclick=()=>{ workOn=!workOn; renderLayers(); if(typeof syncTraffic==="function") syncTraffic(); };
 }
