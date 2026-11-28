@@ -14,6 +14,11 @@ function liveReading(v,R,now){
   r.why=r.cls?null:"nosensor";
   return r;
 }
+function liveTemps(v,R,now){
+  const pick=n=>{const x=v[n]; return x&&x.value!=null&&now-Date.parse(x.measuredTime)<=R.maxAgeMin*60e3?Math.round(x.value*100)/100:null;};
+  const roadT=pick("TIE_1"), airT=pick("ILMA");
+  return roadT!=null||airT!=null?{roadT,airT}:null;
+}
 async function refreshLive(){
   liveAt=Date.now();
   let d;
@@ -29,6 +34,7 @@ async function refreshLive(){
     if(c.km==null||c.km>DATA.maxKm||!by[c.st]) continue;
     const r=liveReading(by[c.st],DATA.rules,liveAt);
     if(r&&(!c.mt||Date.parse(r.mt)>Date.parse(c.mt))) Object.assign(c,r);
+    else if(!c.cls){ const t=liveTemps(by[c.st],DATA.rules,liveAt); if(t) Object.assign(c,t); }
   }
   DATA.live=d.dataUpdatedTime;
   renderData(); refreshMap();

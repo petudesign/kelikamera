@@ -99,9 +99,10 @@ function camStatus(c){
   const L=T(), k=clsAt(c), past=slot!==24;
   // anturillinen kamera, jolta puuttuu yksi tunti: sama rakenne kuin muilla tunneilla (ei nytkähdystä)
   const hourGap=k==="ei mittausta"&&past&&!!c.h;
+  const hasTemps=!past&&c.why==="nosensor"&&(c.roadT!=null||c.airT!=null);
   const station=`<span>${ic("tower")}${L.station} ${esc(c.st)}</span><span>${ic("pin")}<span class="num">${num(c.km," km")}</span></span>`;
   const sub=hourGap?`<span>${ic("clock")}<span class="num">${fmtClock(DATA.times[slot])}</span></span>${station}`
-    :k==="ei mittausta"?(c.cls||c.h?"":L.aiSoon)
+    :k==="ei mittausta"?(c.cls||c.h?"":(hasTemps?station:L.aiSoon))
     :`<span>${ic("clock")}${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span></span>${station}`;
   const fav=isFavCam(c.id), favLbl=fav?L.unfavCam:L.favCam;
   return {k,past,hourGap,html:`<div><b>${L.cls[k]}</b><small>${sub}</small></div>
@@ -110,10 +111,18 @@ function camStatus(c){
 
 function camReadings(c,s){
   const L=T(), fr=s.past?(c.hf?c.hf[slot]:null):c.friction;
-  if(s.k==="ei mittausta"&&!s.hourGap)
-    return c.cls?"":`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`;
-  const thin=s.k==="ohut"&&!s.past;
   const row=(icon,label,val)=>`<div class="kv"><dt>${ic(icon)}${label}</dt><dd class="num">${val}</dd></div>`;
+  if(s.k==="ei mittausta"&&!s.hourGap){
+    if(c.cls) return "";
+    const note=`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`;
+    if(!s.past&&c.why==="nosensor"&&(c.roadT!=null||c.airT!=null)){
+      const rows=(c.roadT!=null?row("thermo",L.roadT,num(c.roadT," °C")):"")
+        +(c.airT!=null?row("thermoSun",L.airT,num(c.airT," °C")):"");
+      return `<dl class="read">${rows}</dl>${note}`;
+    }
+    return note;
+  }
+  const thin=s.k==="ohut"&&!s.past;
   return `<dl class="read">
     <div class="kv joined"><dt>${ic("gauge")}${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
     ${thin?`<p class="thin">${L.thinIce(num(Math.max(c.ice||0,c.snow||0)," mm",2))}</p>`:""}
