@@ -67,10 +67,16 @@ function currentWarns(only){
 }
 function warnItems(only){
   const now=Date.now(), list=currentWarns(only);
-  return list.length?list.map(({w,i})=>{const on=new Date(w.onset)<=now;
-     return `<button class="warn${on?" now":""}" data-i="${i}"><b data-st="${on?T().inForce:T().upcoming}">${ic("tri")}${esc(areaOf(w))}</b>
-       <span class="hz">${esc(hazardOf(w))}</span><span class="num">${fmtTime(w.onset)} – ${fmtTime(w.expires)}</span></button>`}).join("")
-     :`<p class="note">${T().noWarnings}</p>`;
+  if(!list.length) return `<p class="note">${T().noWarnings}</p>`;
+  const byTime=(a,b)=>new Date(a.w.onset)-new Date(b.w.onset)||new Date(a.w.expires)-new Date(b.w.expires);
+  const active=list.filter(({w})=>new Date(w.onset)<=now).sort(byTime);
+  const later=list.filter(({w})=>new Date(w.onset)>now).sort(byTime);
+  const row=({w,i},on)=>`<button class="warn${on?" now":""}" data-i="${i}"><b data-st="${on?T().inForce:T().upcoming}">${ic("tri")}${esc(areaOf(w))}</b>
+    <span class="hz">${esc(hazardOf(w))}</span><span class="num">${fmtTime(w.onset)} – ${fmtTime(w.expires)}</span></button>`;
+  let html="";
+  if(active.length) html+=`<div class="wgrp now"><div class="wgrp-hd"><span class="wdot" aria-hidden="true"></span><span>${T().warnActiveHd}</span><span class="num">${active.length}</span></div>${active.map(x=>row(x,true)).join("")}</div>`;
+  if(later.length) html+=`<div class="wgrp later"><div class="wgrp-hd"><span>${T().warnLaterHd}</span><span class="num">${later.length}</span></div>${later.map(x=>row(x,false)).join("")}</div>`;
+  return html;
 }
 function renderWarnings(){
   const el=document.getElementById("warnsec"), n=currentWarns().length;

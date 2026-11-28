@@ -6,8 +6,35 @@ function fitPadding(){
   return isMobile()?{top:key.offsetHeight+20,bottom:80,left:12,right:12}:{top:64,bottom:90,left:390,right:24};
 }
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/dark",
-  bounds:FINLAND,fitBoundsOptions:{padding:fitPadding()},maxZoom:14,attributionControl:false});
+  bounds:FINLAND,fitBoundsOptions:{padding:fitPadding()},maxZoom:14,maxTileCacheZoomLevels:10,attributionControl:false});
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
+// MapLibren oma ScrollZoomHandler viivyttää ensimmäistä rullausta 40 ms (wheel/trackpad-tunnistus)
+// ja vaihtaa kesken eleen nopeutta sekä 200 ms easingia. Korvataan kevyellä, viiveettömällä rullazoomilla.
+(function setupSmoothZoom(){
+  map.scrollZoom.disable();
+  const el=map.getCanvasContainer(), easeOut=t=>1-(1-t)**3;
+  let target=null, anchor=null, ax=NaN, ay=NaN;
+  const reset=()=>{target=null;anchor=null};
+  map.on("zoomend",reset);
+  map.on("dragstart",reset);
+  el.addEventListener("wheel",e=>{
+    e.preventDefault();
+    if(!e.deltaY) return;
+    let dy=e.deltaMode===1?e.deltaY*33:e.deltaMode===2?e.deltaY*120:e.deltaY;
+    if(e.shiftKey) dy/=4;
+    const pinch=e.ctrlKey, discrete=e.deltaMode!==0||Math.abs(dy)>=50;
+    const step=pinch?-Math.max(-80,Math.min(80,dy))*.012:-Math.max(-240,Math.min(240,dy))*.0045;
+    const cur=map.getZoom(), next=Math.min(map.getMaxZoom(),Math.max(map.getMinZoom(),(target??cur)+step));
+    if(Math.abs(next-cur)<1e-4&&target===null) return;
+    target=next;
+    if(!anchor||Math.abs(e.clientX-ax)>2||Math.abs(e.clientY-ay)>2){
+      const r=el.getBoundingClientRect();
+      ax=e.clientX; ay=e.clientY;
+      anchor=map.unproject([ax-r.left,ay-r.top]);
+    }
+    map.easeTo({zoom:target,around:anchor,duration:pinch?45:discrete?140:75,easing:easeOut,easeId:"wheel"});
+  },{passive:false});
+})();
 function lockToFinland(){
   map.setMaxBounds(null); map.setMinZoom(0);
   map.fitBounds(FINLAND,{padding:fitPadding(),animate:false});
@@ -19,10 +46,10 @@ function lockToFinland(){
 const mapReady=new Promise(r=>map.once("load",r));
 // Tummennus Suomen ulkopuolelle heti, ja kartta näkyviin vasta sen jälkeen (muuten pohjakartta välähtää)
 function addMask(){
-  map.addSource("fin",{type:"geojson",data:"data/finland.geojson"});
-  map.addLayer({id:"outside",type:"fill",source:"fin",filter:["==",["get","role"],"mask"],
+  map.addSource("fin",{type:"geojson",data:"data/finland.geojson",maxzoom:8});
+  map.addLayer({id:"outside",type:"fill",source:"fin",maxzoom:9,filter:["==",["get","role"],"mask"],
     paint:{"fill-color":"#0a0a0a","fill-opacity":["interpolate",["linear"],["zoom"],5,.72,7,.5,9,0]}});
-  map.addLayer({id:"border",type:"line",source:"fin",filter:["==",["get","role"],"border"],
+  map.addLayer({id:"border",type:"line",source:"fin",maxzoom:9,filter:["==",["get","role"],"border"],
     paint:{"line-color":"#9fb0c4","line-opacity":["interpolate",["linear"],["zoom"],5,.35,9,0],"line-width":1}});
 }
 function reveal(){document.getElementById("map").classList.add("shown")}
@@ -54,14 +81,14 @@ function warnGeo(){
     geometry:{type:"MultiPolygon",coordinates:w.polygons.map(r=>[r])},properties:{i,color:w.color}}))};
 }
 function addLayers(){
-  map.addSource("warn",{type:"geojson",data:warnGeo()});
+  map.addSource("warn",{type:"geojson",data:warnGeo(),maxzoom:9});
   map.addLayer({id:"warn-fill",type:"fill",source:"warn",filter:warnFilter(),paint:{"fill-color":v("--warn"),"fill-opacity":.08}});
   map.addLayer({id:"warn-line",type:"line",source:"warn",filter:warnFilter(),paint:{"line-color":v("--warn"),"line-width":1.2,"line-opacity":.7,"line-dasharray":[3,2]}});
   map.addLayer({id:"warn-sel",type:"line",source:"warn",filter:["==",["get","i"],-1],paint:{"line-color":v("--warn"),"line-width":2.5}});
-  map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addSource("route",{type:"geojson",data:{type:"FeatureCollection",features:[]},maxzoom:12});
   map.addLayer({id:"route-case",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#0a0a0a","line-width":7}});
   map.addLayer({id:"route",type:"line",source:"route",layout:{"line-join":"round","line-cap":"round"},paint:{"line-color":"#c9d3df","line-width":3}});
-  map.addSource("cams",{type:"geojson",data:geojson()});
+  map.addSource("cams",{type:"geojson",data:geojson(),maxzoom:11,buffer:32});
   map.addLayer({id:"cams-halo",type:"circle",source:"cams",filter:["==",["get","k"],"jää/kuura"],
     paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,9,10,18],"circle-color":COLORS["jää/kuura"],"circle-opacity":.22,"circle-blur":.6}});
   map.addLayer({id:"cams",type:"circle",source:"cams",layout:{"circle-sort-key":["get","rank"]},
