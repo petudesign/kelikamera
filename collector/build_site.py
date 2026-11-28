@@ -184,6 +184,7 @@ def fetch_cameras(started: datetime) -> tuple[list[dict], set[int]]:
             "ice": r2(lab.get("ice_mm")) if near else None,
             "thin": bool(near and lab.get("thin")),
             "roadT": r2(lab.get("road_temp")) if near else None,
+            "roadTr": r2(lab.get("road_temp_rate")) if near else None,
             "airT": r2(lab.get("air_temp")) if near else None,
         })
     return cams, need

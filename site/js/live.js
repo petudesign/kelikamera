@@ -9,15 +9,15 @@ function liveReading(v,R,now){
   if(!opt||opt.value==null||now-Date.parse(opt.measuredTime)>R.maxAgeMin*60e3) return null;
   const val=n=>v[n]&&v[n].value!=null?Math.round(v[n].value*100)/100:null;
   const r={mt:opt.measuredTime,cls:R.codes[Math.trunc(opt.value)]||null,friction:val("KITKA1_LUKU"),water:val("VEDEN_MÄÄRÄ1"),
-    snow:val("LUMEN_MÄÄRÄ1"),ice:val("JÄÄN_MÄÄRÄ1"),roadT:val("TIE_1"),airT:val("ILMA")};
+    snow:val("LUMEN_MÄÄRÄ1"),ice:val("JÄÄN_MÄÄRÄ1"),roadT:val("TIE_1"),roadTr:val("TIE_1_DERIVAATTA"),airT:val("ILMA")};
   r.thin=SLIPPERY.includes(r.cls)&&r.friction!=null&&r.friction>=R.thinFriction&&Math.max(r.ice||0,r.snow||0)<R.thinLayer;
   r.why=r.cls?null:"nosensor";
   return r;
 }
 function liveTemps(v,R,now){
   const pick=n=>{const x=v[n]; return x&&x.value!=null&&now-Date.parse(x.measuredTime)<=R.maxAgeMin*60e3?Math.round(x.value*100)/100:null;};
-  const roadT=pick("TIE_1"), airT=pick("ILMA");
-  return roadT!=null||airT!=null?{roadT,airT}:null;
+  const roadT=pick("TIE_1"), roadTr=pick("TIE_1_DERIVAATTA"), airT=pick("ILMA");
+  return roadT!=null||airT!=null?{roadT,roadTr,airT}:null;
 }
 async function refreshLive(){
   liveAt=Date.now();

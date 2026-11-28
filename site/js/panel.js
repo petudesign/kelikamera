@@ -11,9 +11,17 @@ function panelShown(){
   if(h&&!panelEl.contains(document.activeElement)) h.focus({preventScroll:true});
 }
 
+function syncCamUrl(id){
+  try{
+    const u=new URL(location);
+    if(id) u.searchParams.set("cam",id); else u.searchParams.delete("cam");
+    history.replaceState(null,"",u);
+  }catch{}
+}
+
 function closePanel(){
   if(typeof closeLightbox==="function") closeLightbox();
-  panelEl.classList.remove("on"); current=null; select("");
+  panelEl.classList.remove("on"); current=null; select(""); syncCamUrl(null);
   delete panelEl.dataset.cam; panelEl.style.minHeight="";
   if(!panelEl.inert){ panelEl.inert=true; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus({preventScroll:true}); lastFocus=null; }
   clearWarnSel(); refreshWarn();
@@ -106,7 +114,31 @@ function camStatus(c){
     :`<span>${ic("clock")}${L.measured} <span class="num">${fmtClock(past?DATA.times[slot]:(c.mt||c.t))}</span></span>${station}`;
   const fav=isFavCam(c.id), favLbl=fav?L.unfavCam:L.favCam;
   return {k,past,hourGap,html:`<div><b>${L.cls[k]}</b><small>${sub}</small></div>
-    <div class="status-acts"><button type="button" class="favbtn" data-fav="${esc(c.id)}" aria-pressed="${fav}" aria-label="${esc(favLbl)}" title="${esc(favLbl)}">${ic("star")}</button><button class="x" aria-label="${L.close}">${X}</button></div>`};
+    <div class="status-acts"><button type="button" class="sharebtn" data-share="${esc(c.id)}" aria-label="${esc(L.copyLink)}" title="${esc(L.copyLink)}">${ic("link")}</button><button type="button" class="favbtn" data-fav="${esc(c.id)}" aria-pressed="${fav}" aria-label="${esc(favLbl)}" title="${esc(favLbl)}">${ic("star")}</button><button class="x" aria-label="${L.close}">${X}</button></div>`};
+}
+
+function roadTempVal(c){
+  const t=num(c.roadT," °C");
+  if(c.roadTr==null||Math.abs(c.roadTr)<0.2) return t;
+  const cool=c.roadTr<=-0.5&&c.roadT!=null&&c.roadT<=2;
+  const sign=c.roadTr>0?"+":"";
+  return `${t}<span class="trend${cool?" cool":""}">${sign}${num(c.roadTr," °C/h",1)}</span>`;
+}
+
+function roadNavHtml(c){
+  if(c.road==null) return "";
+  const list=DATA.cameras.filter(x=>x.road===c.road).sort((a,b)=>(a.sec-b.sec)||(a.dist-b.dist));
+  if(list.length<2) return "";
+  const i=list.findIndex(x=>x.id===c.id); if(i<0) return "";
+  const L=T(), prev=list[i-1], next=list[i+1];
+  const btn=(cam,dir,icon,lbl)=>cam
+    ?`<button type="button" class="rn-btn rn-${dir}" data-cam="${esc(cam.id)}" aria-label="${esc(lbl)}: ${esc(nameOf(cam))}" title="${esc(nameOf(cam))}">${dir==="prev"?icon:""}<span>${esc(nameOf(cam))}</span>${dir==="next"?icon:""}</button>`
+    :`<span class="rn-btn rn-${dir} rn-off" aria-hidden="true">${dir==="prev"?icon:""}<span>–</span>${dir==="next"?icon:""}</span>`;
+  return `<nav class="roadnav" aria-label="${esc(L.road)} ${esc(c.road)}">
+    ${btn(prev,"prev",ic("prev"),L.prevCam)}
+    <span class="rn-pos num">${esc(L.road)} ${esc(c.road)} · ${i+1}/${list.length}</span>
+    ${btn(next,"next",ic("next"),L.nextCam)}
+  </nav>`;
 }
 
 function camReadings(c,s){
@@ -116,7 +148,7 @@ function camReadings(c,s){
     if(c.cls) return "";
     const note=`<p class="empty"><strong>${L.noMeasure}</strong>${c.why==="far"?L.far(num(c.km," km")):L.nosensor} ${L.aiNote}</p>`;
     if(!s.past&&c.why==="nosensor"&&(c.roadT!=null||c.airT!=null)){
-      const rows=(c.roadT!=null?row("thermo",L.roadT,num(c.roadT," °C")):"")
+      const rows=(c.roadT!=null?row("thermo",L.roadT,roadTempVal(c)):"")
         +(c.airT!=null?row("thermoSun",L.airT,num(c.airT," °C")):"");
       return `<dl class="read">${rows}</dl>${note}`;
     }
@@ -126,7 +158,7 @@ function camReadings(c,s){
   return `<dl class="read">
     <div class="kv joined"><dt>${ic("gauge")}${L.friction}</dt><dd class="num">${num(fr,"",2)}</dd></div>${scale(fr)}
     ${thin?`<p class="thin">${L.thinIce(num(Math.max(c.ice||0,c.snow||0)," mm",2))}</p>`:""}
-    ${s.past?"":row("thermo",L.roadT,num(c.roadT," °C"))+row("thermoSun",L.airT,num(c.airT," °C"))
+    ${s.past?"":row("thermo",L.roadT,roadTempVal(c))+row("thermoSun",L.airT,num(c.airT," °C"))
       +row("droplet",L.water,num(c.water," mm",2))+row("cloudSnow",L.snow,num(c.snow," mm",2))+row("snowflake",L.ice,num(c.ice," mm",2))}
   </dl>`;
 }
@@ -147,6 +179,7 @@ function renderCamPanel(c,s){
     <figure class="shot"><button type="button" class="shotbtn" aria-label="${esc(T().openFull)}"><img alt="${esc(nameOf(c))}"><span class="zoomhint" aria-hidden="true">${ic("expand")}</span></button>
       <div id="campresets">${presetPillsHtml(c)}</div>
       <figcaption>${ic("camera")}${T().camNow}<span id="camview">${viewName(c)}</span><span id="camtime"></span><span id="shotcap"></span></figcaption></figure>
+    <div id="roadnav">${roadNavHtml(c)}</div>
     <div id="camread">${camReadings(c,s)}</div>
     <div id="camhist">${camHistory(c)}</div>
   </div>`;
@@ -157,6 +190,7 @@ function updateCamPanel(c,s){
   st.style.setProperty("--c",COLORS[s.k]); st.innerHTML=s.html;
   const vw=panelEl.querySelector("#camview"); if(vw) vw.innerHTML=viewName(c);
   const prEl=panelEl.querySelector("#campresets"); if(prEl) prEl.innerHTML=presetPillsHtml(c);
+  const rnEl=panelEl.querySelector("#roadnav"); if(rnEl) rnEl.innerHTML=roadNavHtml(c);
   panelEl.querySelector("#camtime").textContent="";
   panelEl.querySelector("#camread").innerHTML=camReadings(c,s);
   panelEl.querySelector("#camhist").innerHTML=camHistory(c);
@@ -166,7 +200,7 @@ function openCam(id,keep){
   const c=byId[id]; if(!c) return;
   const same=keep&&panelEl.dataset.cam===id&&panelEl.querySelector(".shot");
   if(current&&current.type==="warn") clearWarnSel();
-  current={type:"cam",id}; select(id); refreshWarn();
+  current={type:"cam",id}; select(id); syncCamUrl(id); refreshWarn();
   if(!keep){
     if(isMobile()) setCollapsed(true);
     if(ready()) map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),8),
@@ -242,6 +276,20 @@ addEventListener("keydown",e=>{
 });
 panelEl.addEventListener("click",e=>{
   if(e.target.closest(".x")) return closePanel();
+  const sb=e.target.closest(".sharebtn[data-share]");
+  if(sb){
+    const u=new URL(location); u.searchParams.set("cam",sb.dataset.share);
+    const done=()=>{
+      sb.dataset.copied="true"; sb.innerHTML=ic("check");
+      sb.setAttribute("aria-label",T().copied); sb.title=T().copied;
+      clearTimeout(sb._t);
+      sb._t=setTimeout(()=>{sb.removeAttribute("data-copied"); sb.innerHTML=ic("link");
+        sb.setAttribute("aria-label",T().copyLink); sb.title=T().copyLink;},1800);
+    };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(u.href).then(done,done);
+    else done();
+    return;
+  }
   const fb=e.target.closest(".favbtn[data-fav]");
   if(fb){
     const id=fb.dataset.fav; toggleFavCam(id);
@@ -250,6 +298,8 @@ panelEl.addEventListener("click",e=>{
     if(typeof renderFavCams==="function") renderFavCams();
     return;
   }
+  const rn=e.target.closest(".roadnav button[data-cam]");
+  if(rn) return openCam(rn.dataset.cam);
   if(e.target.closest(".shotbtn")) return openLightbox();
   const pill=e.target.closest(".pill[data-pid]");
   if(pill&&current&&current.type==="cam") selectPreset(byId[current.id],pill.dataset.pid);

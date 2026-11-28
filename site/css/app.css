@@ -206,6 +206,14 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .saved-pick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .saved-del{flex:none;width:34px;height:34px;margin-right:3px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-3)}
 @media (hover:hover) and (pointer:fine){.saved-pick:hover{background:var(--surface-3)}.saved-del:hover{color:var(--text);background:var(--surface-3)}}
+.ex-sec{padding:10px 10px 4px}
+.ex-hd{font-size:11.5px;font-weight:500;color:var(--text-3);margin-bottom:6px;padding:0 4px}
+.ex-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ex-chip{min-height:32px;padding:5px 10px;border-radius:999px;font-size:12.5px;font-weight:500;color:var(--text-2);background:var(--surface-2);box-shadow:var(--hair),var(--lift);transition:background-color .12s ease,color .12s ease,transform .16s var(--ease-out)}
+.ex-chip:active{transform:scale(.96)}
+@media (hover:hover) and (pointer:fine){.ex-chip:hover{background:var(--surface-3);color:var(--text)}}
+.list .km{display:flex;flex-direction:column;align-items:flex-end;gap:1px;white-space:nowrap}
+.list .km small{font-size:11.5px;color:var(--text-3);font-weight:400}
 .trip-acts{display:flex;align-items:center;gap:2px;flex:none}
 .saveroute .ic{width:13px;height:13px}
 .saveroute[aria-pressed="true"]{color:var(--warn)}
@@ -278,12 +286,13 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .status small>span{display:inline-flex;align-items:center;gap:5px}
 .status small .ic{width:13px;height:13px;color:var(--text-3)}
 .status-acts{display:flex;align-items:center;gap:6px;flex:none;margin:-4px 0 0}
-.favbtn,.x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:rgba(255,255,255,.04);box-shadow:var(--hair)}
-.favbtn .ic{width:16px;height:16px;vertical-align:0}
+.sharebtn,.favbtn,.x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--text-2);background:rgba(255,255,255,.04);box-shadow:var(--hair)}
+.sharebtn .ic,.favbtn .ic{width:16px;height:16px;vertical-align:0}
+.sharebtn[data-copied="true"]{color:var(--kuiva);background:rgba(34,197,94,.14)}
 .favbtn[aria-pressed="true"]{color:var(--warn);background:rgba(245,197,24,.12)}
 .favbtn[aria-pressed="true"] .ic{fill:var(--warn)}
-.favbtn:active{transform:scale(.94)}
-@media (hover:hover) and (pointer:fine){.favbtn:hover{background:rgba(255,255,255,.08);color:var(--text)}.favbtn[aria-pressed="true"]:hover{color:var(--warn);background:rgba(245,197,24,.18)}}
+.sharebtn:active,.favbtn:active{transform:scale(.94)}
+@media (hover:hover) and (pointer:fine){.sharebtn:hover,.favbtn:hover{background:rgba(255,255,255,.08);color:var(--text)}.sharebtn[data-copied="true"]:hover{color:var(--kuiva);background:rgba(34,197,94,.2)}.favbtn[aria-pressed="true"]:hover{color:var(--warn);background:rgba(245,197,24,.18)}}
 .place{padding:14px 18px 10px}
 .place h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .place h2:focus{outline:0}
@@ -333,6 +342,15 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .lb-next{right:8px}
 .lb-foot{max-width:1280px;width:100%;margin:10px auto 0;display:flex;justify-content:center}
 .lb-foot .presets{margin-top:0;justify-content:center}
+/* tiekohtainen edellinen/seuraava-navigointi */
+.roadnav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;margin:12px 18px 0;padding:4px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
+.rn-btn{display:inline-flex;align-items:center;gap:4px;min-width:0;min-height:32px;padding:0 8px;border-radius:var(--r-md);font-size:12px;font-weight:500;color:var(--text-2);transition:background-color .12s ease,color .12s ease}
+.rn-btn .ic{width:14px;height:14px;flex:none;color:var(--text-3)}
+.rn-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rn-next{justify-content:flex-end}
+.rn-off{opacity:.35;pointer-events:none}
+.rn-pos{font-size:11.5px;color:var(--text-3);white-space:nowrap;padding:0 2px}
+@media (hover:hover) and (pointer:fine){button.rn-btn:hover{background:var(--surface-3);color:var(--text)}button.rn-btn:hover .ic{color:var(--text-2)}}
 /* lukemat: upotettu ryhmä, rivit hiusviivoin */
 .read{margin:14px 18px 0;padding:2px 12px;border-radius:var(--r-lg);background:var(--surface-2);box-shadow:var(--hair),var(--lift)}
 .read .kv{display:flex;justify-content:space-between;align-items:center;padding:9px 0;box-shadow:inset 0 -1px 0 var(--line)}
@@ -340,7 +358,9 @@ button,select{font:inherit;color:inherit;background:none;border:0;cursor:pointer
 .read .kv.joined{box-shadow:none;padding-bottom:2px}
 .read dt{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-2)}
 .read dt .ic{color:var(--text-3)}
-.read dd{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
+.read dd{display:inline-flex;align-items:baseline;gap:7px;font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
+.trend{font-size:11.5px;font-weight:500;color:var(--text-3);white-space:nowrap}
+.trend.cool{color:#60a5fa}
 .scale{padding:8px 0 12px;box-shadow:inset 0 -1px 0 var(--line)}
 .scale .bar{position:relative;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--jaa),#f5a524 45%,var(--kuiva))}
 .scale .mark{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px var(--surface-2),0 1px 3px rgba(0,0,0,.5)}
@@ -411,7 +431,9 @@ body:has(.panel.on) .maplibregl-ctrl-bottom-right{right:390px}
   .panel.on{transform:none;transition-duration:.45s}
   .panel::before{content:"";position:absolute;left:50%;top:7px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:rgba(255,255,255,.22);z-index:1}
   .status{padding-top:20px}
-  .favbtn,.x{width:44px;height:44px}
+  .sharebtn,.favbtn,.x{width:44px;height:44px}
+  .rn-btn{min-height:40px}
+  .ex-chip{min-height:38px;padding:6px 12px}
   .favcams{padding:8px 12px 2px}
   .favchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
   .favchips::-webkit-scrollbar{display:none}

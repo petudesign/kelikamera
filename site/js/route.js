@@ -2,6 +2,12 @@
 // Palvelut ovat maksuttomia kohtuukäyttöön, joten haku odottaa kirjoittamisen loppua ja reitti haetaan kerran.
 const PHOTON="https://photon.komoot.io/api/", OSRM="https://routing.openstreetmap.de/routed-car/route/v1/driving/";
 const FI_BBOX="19.0,59.6,31.7,70.1", NEAR_KM=0.6;
+const EXAMPLE_ROUTES=[
+  {from:{lon:24.9384,lat:60.1699,name:"Helsinki"},to:{lon:23.7610,lat:61.4978,name:"Tampere"}},
+  {from:{lon:24.9384,lat:60.1699,name:"Helsinki"},to:{lon:25.7473,lat:62.2426,name:"Jyväskylä"}},
+  {from:{lon:23.7610,lat:61.4978,name:"Tampere"},to:{lon:25.4651,lat:65.0121,name:"Oulu"}},
+  {from:{lon:24.9384,lat:60.1699,name:"Helsinki"},to:{lon:24.8082,lat:67.8040,name:"Levi"}}
+];
 const placeLabel=p=>{const n=p.name||[p.street,p.housenumber].filter(Boolean).join(" ");
   const sub=[p.name&&p.street?[p.street,p.housenumber].filter(Boolean).join(" "):null,p.city||p.county||p.state].filter(Boolean).join(", ");
   return {n:n||sub,sub:n?sub:""}};
@@ -65,9 +71,15 @@ async function maybeRoute(){
       const [dist,at]=project(g,cum,c.lon,c.lat); if(dist<=NEAR_KM) cams.push({c,at});}
     cams.sort((a,b)=>a.at-b.at);
     const totalCum=cum[cum.length-1], scale=totalCum>0?rt.distance/1000/totalCum:1;   // reitin oma pituus tarkemmaksi
-    cams.forEach(x=>x.at*=scale);
+    const stepPts=[[0,0]];
+    let sd=0, st=0;
+    for(const l of rt.legs) for(const s of l.steps){ sd+=s.distance/1000; st+=s.duration; stepPts.push([sd,st]); }
+    const etaSec=at=>{for(let i=1;i<stepPts.length;i++) if(at<=stepPts[i][0]){
+      const [d0,t0]=stepPts[i-1],[d1,t1]=stepPts[i];
+      return t0+(d1>d0?(at-d0)/(d1-d0)*(t1-t0):0);} return st;};
     const samples=g.filter((_,i)=>i%25===0);
     const now=Date.now();
+    cams.forEach(x=>{x.at*=scale; x.eta=new Date(now+etaSec(x.at)*1000).toISOString();});
     const warns=WARN.map((w,i)=>({w,i})).filter(({w})=>new Date(w.expires)>now&&w.polygons.some(ring=>samples.some(([x,y])=>inPoly(x,y,ring))));
     ROUTE={...ROUTE,geom:g,km:rt.distance/1000,h:rt.duration/3600,cams,ids:new Set(cams.map(x=>x.c.id)),warns};
     try{if(ROUTE.from.name!==T().myLoc) localStorage.setItem("route",JSON.stringify({from:ROUTE.from,to:ROUTE.to}))}catch(e){}
@@ -93,13 +105,17 @@ function renderRoute(){
         <button type="button" class="saved-pick" data-ri="${i}">${ic("star")}<span>${esc(r.from.name)} → ${esc(r.to.name)}</span></button>
         <button type="button" class="saved-del" data-di="${i}" aria-label="${esc(L.removeRoute)}" title="${esc(L.removeRoute)}">${X}</button>
       </li>`).join("")}</ul></div>`:"";
+    const exHtml=`<div class="ex-sec"><div class="ex-hd">${L.exampleRoutes}</div>
+      <div class="ex-chips">${EXAMPLE_ROUTES.map((r,i)=>`<button type="button" class="ex-chip" data-ei="${i}">${esc(r.from.name)} → ${esc(r.to.name)}</button>`).join("")}</div></div>`;
     el.innerHTML=savedHtml
       +(showLast?`<button class="last" id="lastroute">${ic("history")}<span>${esc(last.from.name)} → ${esc(last.to.name)}<small>${L.lastRoute}</small></span></button>`:"")
+      +exHtml
       +`<p class="blank credits" style="border:0">${L.routeSrc}</p>`;
     const loadR=r=>{ROUTE.from=r.from;ROUTE.to=r.to;
       document.getElementById("from").value=r.from.name; document.getElementById("to").value=r.to.name; maybeRoute();};
     el.querySelectorAll(".saved-pick").forEach(b=>b.onclick=()=>loadR(SAVED_ROUTES[+b.dataset.ri]));
     el.querySelectorAll(".saved-del").forEach(b=>b.onclick=()=>{removeSavedRoute(+b.dataset.di); renderRoute();});
+    el.querySelectorAll(".ex-chip").forEach(b=>b.onclick=()=>loadR(EXAMPLE_ROUTES[+b.dataset.ei]));
     const lb=document.getElementById("lastroute"); if(lb) lb.onclick=()=>loadR(last);
     return; }
   const cams=ROUTE.cams, meas=cams.filter(x=>clsAt(x.c)!=="ei mittausta");
@@ -138,8 +154,8 @@ function renderRoute(){
     </div>
     <div class="rstrip"><div class="bars" aria-hidden="true">${cams.map(x=>`<i style="left:${(x.at/ROUTE.km*100).toFixed(2)}%;background:${COLORS[clsAt(x.c)]}"></i>`).join("")}</div>
       <div class="ends num"><span>0 km</span><span>${kmf(ROUTE.km)} km</span></div></div>
-    <ul class="list">${cams.map(x=>{const k=clsAt(x.c);return `<li><button class="item" data-id="${esc(x.c.id)}"><span class="sw" style="background:${COLORS[k]}"></span>
-      <span><b>${esc(nameOf(x.c))}</b><small>${L.cls[k]}</small></span><span class="km">${kmf(x.at)} km</span></button></li>`}).join("")}</ul>
+    <ul class="list">${cams.map(x=>{const k=clsAt(x.c), eta=slot===24&&x.eta?`<small>${L.eta(fmtClock(x.eta))}</small>`:"";return `<li><button class="item" data-id="${esc(x.c.id)}"><span class="sw" style="background:${COLORS[k]}"></span>
+      <span><b>${esc(nameOf(x.c))}</b><small>${L.cls[k]}</small></span><span class="km num">${kmf(x.at)} km${eta}</span></button></li>`}).join("")}</ul>
     <p class="credits">${L.routeSrc}</p>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const c=byId[b.dataset.id]; if(isMobile()) setCollapsed(true);
     map.flyTo({center:[c.lon,c.lat],zoom:Math.max(map.getZoom(),9),offset:isMobile()?[0,-innerHeight*.28]:[-180,0]}); openCam(c.id)});

@@ -89,6 +89,7 @@ def label(item: dict, stations: dict[int, dict[str, dict]]) -> dict:
         "snow_mm": val("LUMEN_MÄÄRÄ1"),
         "ice_mm": val("JÄÄN_MÄÄRÄ1"),
         "road_temp": val("TIE_1"),
+        "road_temp_rate": val("TIE_1_DERIVAATTA"),
         "air_temp": val("ILMA"),
         "surface_state_raw": val("TIENPINNAN_TILA_1"),
         "optical_code": val("OPTISEN_ANTURIN_KELI1"),

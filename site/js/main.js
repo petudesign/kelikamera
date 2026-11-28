@@ -7,7 +7,11 @@ Promise.all([fetchJson("data/latest.json"),fetchJson("data/warnings.json").catch
   if(!d||!Array.isArray(d.cameras)) throw new Error("Virheellinen latest.json");
   DATA=d; WARN=Array.isArray(w.warnings)?w.warnings:[]; d.cameras.forEach(c=>byId[c.id]=c);
   renderAll(); syncTabIdx(); document.getElementById("key").classList.remove("loading");
-  mapReady.then(addLayers).then(startLive);
+  mapReady.then(addLayers).then(()=>{
+    const cam=new URLSearchParams(location.search).get("cam");
+    if(cam&&byId[cam]) openCam(cam);
+    startLive();
+  });
   map.on("moveend",()=>{ if(worseScope==="view"&&!document.getElementById("p-worse").hidden) renderWorse(worsening()); });
 })
 .catch(()=>{
